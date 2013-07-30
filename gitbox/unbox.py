@@ -43,8 +43,8 @@ def unbox():
     # Update the repo safely (don't discard changes)
     subprocess.call(['git', 'pull', '--ff-only'])
     # Update any submodules
-    subprocess.check_call(['git', 'submodule', 'update', '--init',
-                           '--recursive'])
+    subprocess.call(['git', 'submodule', 'update', '--init',
+                     '--recursive'])
 
     # Symlink to git hooks
     if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
