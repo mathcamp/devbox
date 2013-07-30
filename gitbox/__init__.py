@@ -130,7 +130,14 @@ def configure(repo):
 
     if conf.get('autoenv'):
         with open(os.path.join(repo, '.env'), 'w') as outfile:
-            outfile.write('source ' + os.path.join(env, 'bin',
+            if os.path.isabs(env):
+                outfile.write(r'source ' + os.path.join(env, 'bin',
+                                                    'activate'))
+            else:
+                outfile.write(r"_envdir=$(dirname "
+                              r"${_files[_file-__array_offset]})")
+                outfile.write('\n')
+                outfile.write(r'source $_envdir/' + os.path.join(env, 'bin',
                                                    'activate'))
 
     conf['modified'] = dict(modified)
