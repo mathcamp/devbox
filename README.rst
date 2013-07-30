@@ -21,7 +21,7 @@ This will clone the repository and set up any pre-commit hooks. If a virtualenv
 is specified, it will create the virtualenv and install the package into that
 env.
 
-The unbox command is idempotent, so you can run it multiple times with not
+The unbox command is idempotent, so you can run it multiple times with no
 problems. If you have already cloned the repository you want to unbox, just
 pass in the path to the repository like so::
 
@@ -30,8 +30,34 @@ pass in the path to the repository like so::
 
 Customizing
 ===========
-You can add additional pre-commit checks by simply putting them in the
+You can add additional pre-commit checks by putting them in the
 ``git_hooks/pre-commit`` file. If you want to run additional checks on a
 per-modified-file basis, add the command to the gitbox.conf file. If you want
 to install additional packages during the unboxing, put them into the
 ``requirements_dev.txt`` file.
+
+Format of gitbox.conf
+=====================
+gitbox.conf is a json-encoded dictionary with several fields::
+
+    env : dict
+        path : str
+            The path to a virtualenv. Usually relative to repository root, but
+            can be absolute.
+        args : list
+            List of flags to pass to the virtualenv command (e.g.
+            ['--system-site-packages'])
+    autoenv : bool
+        If true, unbox will make sure autoenv is installed for the user
+    modified : dict
+        Keys are glob patterns. Values are commands (list of strings to pass to
+        subprocess.Popen). During the pre-commit hook, for each modified file
+        that matches the glob, all commands for that glob are run with the file
+        name passed in as the last argument.
+    all : list
+        List of commands to run during the pre-commit hook. The advantage of
+        using this instead of putting the command directly in 'pre-commit' is
+        that these commands will only be run on the git index, not on unstaged
+        changes.
+    post_setup : list
+        List of commands to run after all other unboxing is done.
