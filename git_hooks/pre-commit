@@ -1,0 +1,3 @@
+#!/bin/bash -e
+git diff-index --check --cached HEAD --
+./venv/bin/gitbox-pre-commit
