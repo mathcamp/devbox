@@ -59,31 +59,38 @@ def unbox():
         conf = json.load(infile)
 
     # Create virtualenv
-    if 'env' in conf:
-        path = conf['env']['path']
-        if not os.path.exists(path):
-            print "Creating virtualenv"
-            cmd = [args['v']] + conf['env']['args'] + [path]
-            subprocess.check_call(cmd)
+    path = conf['env']['path']
+    if not os.path.exists(path):
+        print "Creating virtualenv"
+        cmd = [args['v']] + conf['env']['args'] + [path]
+        subprocess.check_call(cmd)
 
-        pip = os.path.join(path, 'bin', 'pip')
-        if os.path.exists('requirements_dev.txt'):
-            print "Installing requirements"
-            subprocess.check_call([pip, 'install', '-r',
-                                   'requirements_dev.txt'])
-        print "Installing package"
-        subprocess.check_call([pip, 'install', '-e', '.'])
+    # Install requirements if present
+    pip = os.path.join(path, 'bin', 'pip')
+    if os.path.exists('requirements_dev.txt'):
+        print "Installing requirements"
+        subprocess.check_call([pip, 'install', '-r',
+                               'requirements_dev.txt'])
+    print "Installing package"
+    subprocess.check_call([pip, 'install', '-e', '.'])
 
-        if conf.get('autoenv'):
-            if not os.path.exists(os.path.join(HOME, '.autoenv')):
-                print "Installing autoenv"
-                autoenv = os.path.join(HOME, '.autoenv')
-                subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
+    # Install autoenv if necessary
+    if conf.get('autoenv'):
+        if not os.path.exists(os.path.join(HOME, '.autoenv')):
+            print "Installing autoenv"
+            autoenv = os.path.join(HOME, '.autoenv')
+            subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
 
-                activate = os.path.join(autoenv, 'activate.sh')
-                with open(os.path.join(HOME, '.bashrc'), 'a') as outfile:
-                    outfile.write('\n')
-                    outfile.write('source ' + activate)
+            activate = os.path.join(autoenv, 'activate.sh')
+            with open(os.path.join(HOME, '.bashrc'), 'a') as outfile:
+                outfile.write('\n')
+                outfile.write('source ' + activate)
+
+    # Run any post-setup commands
+    if conf.get('post_setup'):
+        for command in conf.get('post_setup'):
+            subprocess.Popen(command, env={'PATH': os.path.join(path, 'bin')})
+
 
 if __name__ == '__main__':
     unbox()
