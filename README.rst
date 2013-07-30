@@ -14,8 +14,8 @@ Unboxing
 If gitbox is installed, you can run ``gitbox-unbox
 git@github.com:user/repo.git``. If gitbox is not installed, run::
 
-    wget --output-file=unbox https://raw.github.com/mathcamp/gitbox/master/gitbox/unbox.py && \
-    bash unbox git@github.com:user/repo.git
+    wget https://raw.github.com/mathcamp/gitbox/master/gitbox/unbox.py && \
+    python unbox.py git@github.com:user/repo.git
 
 This will clone the repository and set up any pre-commit hooks. If a virtualenv
 is specified, it will create the virtualenv and install the package into that
@@ -25,8 +25,8 @@ The unbox command is idempotent, so you can run it multiple times with not
 problems. If you have already cloned the repository you want to unbox, just
 pass in the path to the repository like so::
 
-    wget --output-file=unbox https://raw.github.com/mathcamp/gitbox/master/gitbox/unbox.py && \
-    bash unbox path/to/repo
+    wget https://raw.github.com/mathcamp/gitbox/master/gitbox/unbox.py && \
+    python unbox.py path/to/repo
 
 Customizing
 ===========
