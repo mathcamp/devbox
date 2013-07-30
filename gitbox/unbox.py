@@ -63,7 +63,7 @@ def unbox():
         path = conf['env']['path']
         if not os.path.exists(path):
             print "Creating virtualenv"
-            cmd = args['v'] + conf['env']['args'] + [path]
+            cmd = [args['v']] + conf['env']['args'] + [path]
             subprocess.check_call(cmd)
 
         pip = os.path.join(path, 'bin', 'pip')
