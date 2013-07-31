@@ -8,32 +8,7 @@ import shutil
 from collections import defaultdict
 
 from .hook import CONF_FILE
-
-
-def prompt(msg, default=None, arg_type=str):
-    """ Prompt the user for input """
-    value = raw_input(msg + ' ')
-    if not value.strip():
-        return default
-    return arg_type(value)
-
-
-def promptyn(msg, default=None):
-    """ Display a blocking prompt until the user confirms """
-    while True:
-        yes = "Y" if default else "y"
-        if default or default is None:
-            no = "n"
-        else:
-            no = "N"
-        confirm = raw_input("%s [%s/%s] " % (msg, yes, no))
-        confirm = confirm.lower().strip()
-        if confirm == "y" or confirm == "yes":
-            return True
-        elif confirm == "n" or confirm == "no":
-            return False
-        elif len(confirm) == 0 and default is not None:
-            return default
+from .unbox import prompt, promptyn
 
 
 def copy_static(name, dest):
@@ -132,13 +107,13 @@ def configure(repo):
         with open(os.path.join(repo, '.env'), 'w') as outfile:
             if os.path.isabs(env):
                 outfile.write(r'source ' + os.path.join(env, 'bin',
-                                                    'activate'))
+                                                        'activate'))
             else:
                 outfile.write(r"_envdir=$(dirname "
                               r"${_files[_file-__array_offset]})")
                 outfile.write('\n')
                 outfile.write(r'source $_envdir/' + os.path.join(env, 'bin',
-                                                   'activate'))
+                                                                 'activate'))
 
     conf['modified'] = dict(modified)
     conf_file = os.path.join(repo, CONF_FILE)

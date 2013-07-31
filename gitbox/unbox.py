@@ -14,12 +14,39 @@ AUTOENV_REPO = 'git://github.com/kennethreitz/autoenv.git'
 HOME = os.environ['HOME']
 
 
+def prompt(msg, default=None, arg_type=str):
+    """ Prompt the user for input """
+    value = raw_input(msg + ' ')
+    if not value.strip():
+        return default
+    return arg_type(value)
+
+
+def promptyn(msg, default=None):
+    """ Display a blocking prompt until the user confirms """
+    while True:
+        yes = "Y" if default else "y"
+        if default or default is None:
+            no = "n"
+        else:
+            no = "N"
+        confirm = raw_input("%s [%s/%s] " % (msg, yes, no))
+        confirm = confirm.lower().strip()
+        if confirm == "y" or confirm == "yes":
+            return True
+        elif confirm == "n" or confirm == "no":
+            return False
+        elif len(confirm) == 0 and default is not None:
+            return default
+
+
 def unbox():
     """ Clone and set up a developer repository """
     parser = argparse.ArgumentParser(description=unbox.__doc__)
     parser.add_argument('repo', help="Git url or file path of the repository "
                         "to unbox")
     parser.add_argument('dest', nargs='?', help="Directory to clone into")
+    parser.add_argument('-y', action='store_true', help="Auto-yes")
     parser.add_argument('-v', help="Virtualenv binary", default='virtualenv')
     args = vars(parser.parse_args())
 
@@ -77,14 +104,16 @@ def unbox():
     # Install autoenv if necessary
     if conf.get('autoenv'):
         if not os.path.exists(os.path.join(HOME, '.autoenv')):
-            print "Installing autoenv"
-            autoenv = os.path.join(HOME, '.autoenv')
-            subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
+            if args['y'] or \
+                    promptyn("Would you like to install autoenv?", True):
+                print "Installing autoenv"
+                autoenv = os.path.join(HOME, '.autoenv')
+                subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
 
-            activate = os.path.join(autoenv, 'activate.sh')
-            with open(os.path.join(HOME, '.bashrc'), 'a') as outfile:
-                outfile.write('\n')
-                outfile.write('source ' + activate)
+                activate = os.path.join(autoenv, 'activate.sh')
+                with open(os.path.join(HOME, '.bashrc'), 'a') as outfile:
+                    outfile.write('\n')
+                    outfile.write('source ' + activate)
 
     # Run any post-setup commands
     if conf.get('post_setup'):
