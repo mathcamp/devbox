@@ -14,6 +14,29 @@ AUTOENV_REPO = 'git://github.com/kennethreitz/autoenv.git'
 HOME = os.environ['HOME']
 
 
+def append(lines, filename):
+    """ Append one or more lines to a file if they are not already present """
+    with open(filename, 'r') as infile:
+        file_lines = set(infile.read().splitlines())
+
+    to_append = set(lines) - file_lines
+    if to_append:
+        with open(filename, 'a') as outfile:
+            outfile.write('\n')
+            for line in to_append:
+                outfile.write(line)
+                outfile.write('\n')
+
+
+def load_conf():
+    """ Load the gitbox conf file """
+    if os.path.exists(CONF_FILE):
+        with open(CONF_FILE, 'r') as infile:
+            return json.load(infile)
+    else:
+        return {}
+
+
 def prompt(msg, default=None, arg_type=str):
     """ Prompt the user for input """
     value = raw_input(msg + ' ')
@@ -82,8 +105,7 @@ def unbox():
     if not os.path.exists(CONF_FILE):
         return
 
-    with open(CONF_FILE, 'r') as infile:
-        conf = json.load(infile)
+    conf = load_conf()
 
     # Create virtualenv
     path = conf['env']['path']
@@ -111,9 +133,7 @@ def unbox():
                 subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
 
                 activate = os.path.join(autoenv, 'activate.sh')
-                with open(os.path.join(HOME, '.bashrc'), 'a') as outfile:
-                    outfile.write('\n')
-                    outfile.write('source ' + activate)
+                append(['source ' + activate], os.path.join(HOME, '.bashrc'))
 
     # Run any post-setup commands
     if conf.get('post_setup'):
