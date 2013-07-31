@@ -21,6 +21,7 @@ def copy_static(name, dest):
 
 def configure(repo):
     """ Prompt user for default values """
+    package = os.path.basename(os.path.abspath(repo))
     standalone = promptyn("If standalone mode is disabled, your pre-commit "
                           "hooks will require gitbox to be "
                           "installed\nStandalone mode?", True)
@@ -39,7 +40,7 @@ def configure(repo):
     requirements = []
     install_pylintrc = False
     install_pep8 = False
-    check_whitespace = False
+    pre_commit = []
     if promptyn("Run pylint on commit?", True):
         modified['*.py'].append(['pylint', '--rcfile=pylint/pylintrc'])
         requirements.append('pylint')
@@ -54,8 +55,18 @@ def configure(repo):
         modified['*.py'].append(['pyflakes'])
         requirements.append('pyflakes')
 
+    if promptyn("Add autoPEP8 command?", True):
+        requirements.append('autopep8')
+        autopep8 = os.path.join(repo, 'run_autopep8.sh')
+        with open(autopep8, 'w') as outfile:
+            outfile.write("#!/bin/bash -e\n")
+            outfile.write("find %s -name '*.py' | xargs autopep8 -i "
+                          "--ignore=E501,E24" % package)
+        st = os.stat(autopep8)
+        os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
+
     if promptyn("Prohibit trailing whitespace?", True):
-        check_whitespace = True
+        pre_commit.append("git diff-index --check --cached HEAD --")
 
     if promptyn("Pylint entire package on commit? (slooooow)", False):
         conf['all'].append(['pylint', '--rcfile=pylint/pylintrc',
@@ -78,12 +89,12 @@ def configure(repo):
     if not os.path.isabs(env):
         hook_cmd = os.path.join('.', hook_cmd)
 
+    pre_commit.append(hook_cmd)
+
     precommit = os.path.join(hookdir, 'pre-commit')
     with open(precommit, 'w') as outfile:
         outfile.write("#!/bin/bash -e\n")
-        if check_whitespace:
-            outfile.write("git diff-index --check --cached HEAD --\n")
-        outfile.write(hook_cmd)
+        outfile.write('\n'.join(pre_commit))
     st = os.stat(precommit)
     os.chmod(precommit, st.st_mode | stat.S_IEXEC)
 
