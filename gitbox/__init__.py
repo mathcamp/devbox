@@ -27,14 +27,12 @@ def copy_static(name, dest):
     """ Copy one of the static files to a destination """
     destfile = os.path.join(dest, name)
     if not os.path.exists(destfile):
-        srcfile = os.path.join(os.path.dirname(__file__), os.pardir, 'pylint',
-                               name)
+        srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
         shutil.copyfile(srcfile, destfile)
 
 
 def configure(repo):
     """ Prompt user for default values """
-    package = os.path.basename(os.path.abspath(repo))
     standalone = promptyn("If standalone mode is disabled, your pre-commit "
                           "hooks will require gitbox to be "
                           "installed\nStandalone mode?", True)
@@ -75,10 +73,7 @@ def configure(repo):
         requirements.append('autopep8')
         autopep8 = os.path.join(repo, 'run_autopep8.sh')
         if not os.path.exists(autopep8):
-            with open(autopep8, 'w') as outfile:
-                outfile.write("#!/bin/bash -e\n")
-                outfile.write("find %s -name '*.py' | xargs autopep8 -i "
-                              "--ignore=E501,E24" % package)
+            copy_static('run_autopep8.sh', repo)
             st = os.stat(autopep8)
             os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
 
@@ -129,9 +124,9 @@ def configure(repo):
         if not os.path.exists(pylintdir):
             os.makedirs(pylintdir)
         if install_pylintrc:
-            copy_static('pylintrc', pylintdir)
+            copy_static(os.path.join('pylint', 'pylintrc'), repo)
         if install_pep8:
-            copy_static('pep8.ini', pylintdir)
+            copy_static(os.path.join('pylint', 'pep8.ini'), repo)
 
     if conf.get('autoenv'):
         envfile = os.path.join(repo, '.env')
