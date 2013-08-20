@@ -57,7 +57,7 @@ def configure(repo):
     pre_commit = []
     if promptyn("Run pylint on commit?", True):
         modified['*.py'].append(['pylint', '--rcfile=pylint/pylintrc'])
-        requirements.append('pylint')
+        requirements.append('pylint==0.28.0')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
