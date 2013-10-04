@@ -48,7 +48,7 @@ def configure(repo):
         'path': env,
         'args': [],
     }
-    conf['autoenv'] = promptyn("Use autoenv?", True)
+    autoenv = promptyn("Use autoenv?", True)
 
     modified = defaultdict(list)
     modified.update(conf['modified'])
@@ -130,7 +130,7 @@ def configure(repo):
             copy_static(os.path.join('pylint', 'pep8.ini'), repo)
 
     # Add the autoenv file to activate the virtualenv
-    if conf.get('autoenv'):
+    if autoenv:
         envfile = os.path.join(repo, '.env')
         if not os.path.exists(envfile):
             with open(envfile, 'w') as outfile:

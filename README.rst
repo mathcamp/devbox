@@ -47,8 +47,6 @@ gitbox.conf is a json-encoded dictionary with several fields::
         args : list
             List of flags to pass to the virtualenv command (e.g.
             ['--system-site-packages'])
-    autoenv : bool
-        If true, unbox will make sure autoenv is installed for the user
     modified : dict
         Keys are glob patterns. Values are commands (list of strings to pass to
         subprocess.Popen). During the pre-commit hook, for each modified file
@@ -59,5 +57,14 @@ gitbox.conf is a json-encoded dictionary with several fields::
         using this instead of putting the command directly in 'pre-commit' is
         that these commands will only be run on the git index, not on unstaged
         changes.
+    pre_setup : list
+        List of commands to run at the start of unboxing.
     post_setup : list
         List of commands to run after all other unboxing is done.
+    dependencies : list
+        List of git urls to also clone and install into the virtualenv when
+        unboxing this repo
+    parent : str or None
+        When unboxing this repo, will look for a folder of this name at the
+        same level in your directory structure. If it exists, gitbox will
+        install this package into that folder's virtualenv.
