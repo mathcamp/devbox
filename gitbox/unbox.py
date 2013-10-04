@@ -4,20 +4,23 @@ import os
 import re
 
 import argparse
+import contextlib
 import json
 import shutil
 import subprocess
 
 
 CONF_FILE = 'gitbox.conf'
-AUTOENV_REPO = 'git://github.com/kennethreitz/autoenv.git'
 HOME = os.environ['HOME']
 
 
 def append(lines, filename):
     """ Append one or more lines to a file if they are not already present """
-    with open(filename, 'r') as infile:
-        file_lines = set(infile.read().splitlines())
+    if os.path.exists(filename):
+        with open(filename, 'r') as infile:
+            file_lines = set(infile.read().splitlines())
+    else:
+        file_lines = set()
 
     to_append = set(lines) - file_lines
     if to_append:
@@ -28,10 +31,11 @@ def append(lines, filename):
                 outfile.write('\n')
 
 
-def load_conf():
+def load_conf(directory=os.curdir):
     """ Load the gitbox conf file """
-    if os.path.exists(CONF_FILE):
-        with open(CONF_FILE, 'r') as infile:
+    filename = os.path.join(directory, CONF_FILE)
+    if os.path.exists(filename):
+        with open(filename, 'r') as infile:
             return json.load(infile)
     else:
         return {}
@@ -63,83 +67,191 @@ def promptyn(msg, default=None):
             return default
 
 
-def unbox():
+@contextlib.contextmanager
+def pushd(path):
+    """ Context manager for temporarily changing directories """
+    tmp = os.path.abspath(os.curdir)
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(tmp)
+
+
+def repo_name_from_url(url):
+    """ Parse the repository name out of a git repo url """
+    name_pattern = re.compile(r'[A-Za-z0-9_\-]+')
+    all_words = name_pattern.findall(url)
+    if all_words[-1] == 'git':
+        all_words.pop()
+    return all_words[-1]
+
+
+def pre_setup(conf, dest):
+    """ Run any pre-setup scripts """
+    with pushd(dest):
+        if conf.get('pre_setup'):
+            for command in conf.get('pre_setup'):
+                subprocess.Popen(command)
+
+
+def setup_git_hooks(dest):
+    """ Set up a symlink to the git hooks directory """
+    with pushd(dest):
+        # Symlink to git hooks
+        if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
+            print "Installing git hooks"
+            shutil.rmtree('.git/hooks')
+            os.symlink('../git_hooks', '.git/hooks')
+
+
+def update_repo(repo, dest):
+    """ Make sure the repository is up-to-date """
+    with pushd(dest):
+        print "Updating", repo
+        # Update the repo safely (don't discard changes)
+        subprocess.call(['git', 'pull', '--ff-only'])
+        # Update any submodules
+        subprocess.call(['git', 'submodule', 'update', '--init',
+                        '--recursive'])
+
+
+def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
+    """
+    Create a virtualenv, or link to the correct virtualenv
+
+    Parameters
+    ----------
+    conf : dict
+        The gitbox conf data
+    dest : str
+        The name of the repository to create the virtualenv for
+    virtualenv_cmd : str
+        The path to the virtualenv command to use for creating a virtualenv
+    parent_virtualenv : str or None
+        The path to the parent's virtualenv, or None
+    is_dep : bool
+        If True, this repo is being set up as a dependency for another repo
+
+    Returns
+    -------
+    virtualenv : str
+        The path to this
+
+    """
+    with pushd(dest):
+        # Create virtualenv
+        if conf.get('env'):
+            # If installing as a dependency, link to prior virtualenv
+            if parent_virtualenv is None:
+                parent_virtualenv = conf['env']['path']
+            elif not os.path.exists(conf['env']['path']):
+                os.symlink(parent_virtualenv, conf['env']['path'])
+
+            # If parent is defined, try to link to the parent's virtualenv
+            if not is_dep and conf.get('parent'):
+                parent = os.path.join(os.pardir, conf['parent'])
+                if os.path.exists(parent):
+                    parent_conf = load_conf(parent)
+                    parent_venv = os.path.join(parent,
+                                               parent_conf['env']['path'])
+                    if os.path.exists(parent_venv):
+                        os.symlink(parent_venv, conf['env']['path'])
+
+            if not os.path.exists(conf['env']['path']):
+                print "Creating virtualenv"
+                cmd = ([virtualenv_cmd] + conf['env']['args'] +
+                       [conf['env']['path']])
+                subprocess.check_call(cmd)
+
+
+def install(conf, dest):
+    """ Install requirements and package into virtualenv """
+    with pushd(dest):
+        if conf['env']['path'] is not None:
+            pip = os.path.join(conf['env']['path'], 'bin', 'pip')
+        else:
+            pip = 'pip'
+
+        # Install requirements if present
+        if os.path.exists('requirements_dev.txt'):
+            print "Installing requirements_dev.txt"
+            subprocess.check_call([pip, 'install', '-r',
+                                   'requirements_dev.txt'])
+        print "Installing", dest
+        subprocess.check_call([pip, 'install', '-e', '.'])
+
+
+def post_setup(conf, dest):
+    """ Run any post-setup scripts """
+    with pushd(dest):
+        if conf.get('post_setup'):
+            for command in conf.get('post_setup'):
+                kwargs = {}
+                if conf['env']['path'] is not None:
+                    kwargs['env'] = {
+                        'PATH': os.path.join(conf['env']['path'], 'bin')
+                    }
+                subprocess.Popen(command, **kwargs)
+
+
+def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
+    """
+    Set up a repository for development
+
+    Parameters
+    ----------
+    repo : str
+        The url of the git repository, or a path to the already cloned repo
+    dest : str or None
+        The directory to clone into, or None to use the default
+    virtualenv_cmd : str
+        The path to the virtualenv binary
+    parent_virtualenv : str or None
+        Path to the virtualenv to use for the installation. None will use the
+        settings inside gitbox.conf
+    is_dep : bool
+        True if this repo is being installed as a dependency for another boxed
+        repo
+
+    """
+    if os.path.exists(repo) and dest is None:
+        # 'repo' is a file path, not a git url
+        dest = repo
+    else:
+        if not dest:
+            dest = repo_name_from_url(repo)
+
+    if not os.path.exists(dest):
+        print "Cloning", repo
+        subprocess.check_call(['git', 'clone', repo, dest])
+
+    update_repo(repo, dest)
+    conf = load_conf(dest)
+    pre_setup(conf, dest)
+    setup_git_hooks(dest)
+    create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep)
+
+    # Install other gitbox repos, if any
+    virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
+    for dep in conf.get('dependencies', []):
+        unbox(dep, None, virtualenv_cmd, virtualenv, True)
+
+    install(conf, dest)
+    post_setup(conf, dest)
+
+
+def main():
     """ Clone and set up a developer repository """
-    parser = argparse.ArgumentParser(description=unbox.__doc__)
+    parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument('repo', help="Git url or file path of the repository "
                         "to unbox")
     parser.add_argument('dest', nargs='?', help="Directory to clone into")
-    parser.add_argument('-y', action='store_true', help="Auto-yes")
     parser.add_argument('-v', help="Virtualenv binary", default='virtualenv')
     args = vars(parser.parse_args())
 
-    if os.path.exists(args['repo']) and args['dest'] is None:
-        # 'repo' is a file path, not a git url
-        args['dest'] = args['repo']
-    else:
-        name_pattern = re.compile(r'[A-Za-z0-9_\-]+')
-        if not args['dest']:
-            all_words = name_pattern.findall(args['repo'])
-            if all_words[-1] == 'git':
-                all_words.pop()
-            args['dest'] = all_words[-1]
-
-    if not os.path.exists(args['dest']):
-        print "Cloning repository"
-        subprocess.check_call(['git', 'clone', args['repo'], args['dest']])
-
-    os.chdir(args['dest'])
-    print "Updating repository"
-    # Update the repo safely (don't discard changes)
-    subprocess.call(['git', 'pull', '--ff-only'])
-    # Update any submodules
-    subprocess.call(['git', 'submodule', 'update', '--init',
-                     '--recursive'])
-
-    # Symlink to git hooks
-    if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
-        print "Installing git hooks"
-        shutil.rmtree('.git/hooks')
-        os.symlink('../git_hooks', '.git/hooks')
-
-    if not os.path.exists(CONF_FILE):
-        return
-
-    conf = load_conf()
-
-    # Create virtualenv
-    path = conf['env']['path']
-    if not os.path.exists(path):
-        print "Creating virtualenv"
-        cmd = [args['v']] + conf['env']['args'] + [path]
-        subprocess.check_call(cmd)
-
-    # Install requirements if present
-    pip = os.path.join(path, 'bin', 'pip')
-    if os.path.exists('requirements_dev.txt'):
-        print "Installing requirements"
-        subprocess.check_call([pip, 'install', '-r',
-                               'requirements_dev.txt'])
-    print "Installing package"
-    subprocess.check_call([pip, 'install', '-e', '.'])
-
-    # Install autoenv if necessary
-    if conf.get('autoenv'):
-        if not os.path.exists(os.path.join(HOME, '.autoenv')):
-            if args['y'] or \
-                    promptyn("Would you like to install autoenv?", True):
-                print "Installing autoenv"
-                autoenv = os.path.join(HOME, '.autoenv')
-                subprocess.check_call(['git', 'clone', AUTOENV_REPO, autoenv])
-
-                activate = os.path.join(autoenv, 'activate.sh')
-                append(['source ' + activate], os.path.join(HOME, '.bashrc'))
-
-    # Run any post-setup commands
-    if conf.get('post_setup'):
-        for command in conf.get('post_setup'):
-            subprocess.Popen(command, env={'PATH': os.path.join(path, 'bin')})
+    unbox(args['repo'], args['dest'], args['v'], None, False)
 
 
 if __name__ == '__main__':
-    unbox()
+    main()

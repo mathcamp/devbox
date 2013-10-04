@@ -39,6 +39,7 @@ def configure(repo):
 
     conf = load_conf()
     conf.setdefault('all', [])
+    conf.setdefault('dependencies', [])
     conf.setdefault('modified', {})
 
     env = prompt("Path of virtualenv (relative to repository root)? "
@@ -128,6 +129,7 @@ def configure(repo):
         if install_pep8:
             copy_static(os.path.join('pylint', 'pep8.ini'), repo)
 
+    # Add the autoenv file to activate the virtualenv
     if conf.get('autoenv'):
         envfile = os.path.join(repo, '.env')
         if not os.path.exists(envfile):
@@ -141,6 +143,9 @@ def configure(repo):
                     outfile.write('\n')
                     outfile.write(r'source $_envdir/' +
                                   os.path.join(env, 'bin', 'activate'))
+
+    # Write the virtualenv file to .gitignore
+    append([conf['env']['path']], os.path.join(repo, '.gitignore'))
 
     # Remove duplicates from commands
     remove_duplicate_commands(conf['all'])

@@ -9,6 +9,10 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGES = open(os.path.join(HERE, 'CHANGES.txt')).read()
 
+REQUIREMENTS = [
+    'mock',
+]
+
 DATA = {
     'name': 'gitbox',
     'description': 'Quickly set up python repos for development',
@@ -31,9 +35,14 @@ DATA = {
         'console_scripts': [
             'gitbox-pre-commit = gitbox.hook:precommit',
             'gitbox-create = gitbox:create',
-            'gitbox-unbox = gitbox.unbox:unbox',
+            'gitbox-unbox = gitbox.unbox:main',
         ],
     },
+    'setup_requires': [
+        'nose>=1.0',
+    ],
+    'install_requires': REQUIREMENTS,
+    'tests_require': REQUIREMENTS,
 }
 
 VERSION_MODULE = os.path.join(HERE, DATA['name'], '__version__.py')
