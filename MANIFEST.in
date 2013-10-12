@@ -1,2 +1,4 @@
 include pylint/pylintrc
 include pylint/pep8.ini
+include README.rst
+include CHANGES.txt
