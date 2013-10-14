@@ -2,7 +2,7 @@
 import os
 
 from setuptools import setup, find_packages
-from version_helper import get_version
+from version_helper import git_version
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -16,7 +16,6 @@ REQUIREMENTS = [
 if __name__ == "__main__":
     setup(
         name='gitbox',
-        version=get_version('gitbox'),
         description='Quickly set up python repos for development',
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
@@ -24,7 +23,6 @@ if __name__ == "__main__":
             'Development Status :: 4 - Beta',
             'Intended Audience :: Developers',
             'License :: OSI Approved :: MIT License',
-
         ],
         license='MIT',
         author='Steven Arcangeli',
@@ -45,4 +43,5 @@ if __name__ == "__main__":
         ],
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS,
+        **git_version()
     )
