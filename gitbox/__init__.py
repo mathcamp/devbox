@@ -82,6 +82,8 @@ def configure(repo):
         version_helper = os.path.join(repo, 'version_helper.py')
         if not os.path.exists(version_helper):
             copy_static('version_helper.py', repo)
+        append(['include version_helper.py'],
+               os.path.join(repo, 'MANIFEST.in'))
 
     if promptyn("Prohibit trailing whitespace?", True):
         pre_commit.append("git diff-index --check --cached HEAD --")
