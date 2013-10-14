@@ -78,6 +78,11 @@ def configure(repo):
             st = os.stat(autopep8)
             os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
 
+    if promptyn("Include version_helper?", True):
+        version_helper = os.path.join(repo, 'version_helper.py')
+        if not os.path.exists(version_helper):
+            copy_static('version_helper.py', repo)
+
     if promptyn("Prohibit trailing whitespace?", True):
         pre_commit.append("git diff-index --check --cached HEAD --")
 
