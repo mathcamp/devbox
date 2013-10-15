@@ -65,6 +65,7 @@ gitbox.conf is a json-encoded dictionary with several fields::
         List of git urls to also clone and install into the virtualenv when
         unboxing this repo
     parent : str or None
-        When unboxing this repo, will look for a folder of this name at the
-        same level in your directory structure. If it exists, gitbox will
-        install this package into that folder's virtualenv.
+        When unboxing this repo, will look for a directory of this name at
+        the same level in your directory structure. If it exists, gitbox
+        will make a symbolic link to that virtualenv instead of constructing
+        one for this repo.
