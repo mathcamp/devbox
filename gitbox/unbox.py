@@ -1,5 +1,12 @@
 #!/usr/bin/env python
-""" Clone and set up a developer repository """
+"""
+Clone and set up a developer repository
+
+This file was carefully constructed to have no dependencies on other files in
+the ``gitbox`` package. This allows it to be downloaded separately and run
+directly as a script to perform the "unbox" operation.
+
+"""
 import os
 import re
 
