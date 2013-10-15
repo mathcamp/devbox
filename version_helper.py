@@ -19,12 +19,19 @@ the version number from the file it generated earlier.
 """
 import os
 import re
+import warnings
 
 import subprocess
 
-DEV_BUILD = re.compile('.*-[0-9]+-g[0-9a-f]{7}')
+
+# This version regex was constructed from the regex-ish description here:
+# http://www.python.org/dev/peps/pep-0440/#public-version-identifiers
+VERSION_SCHEME = re.compile(r'^\d+(\.\d+)+'
+                            r'((a|b|c|rc)\d+)?'
+                            r'(\.post\d+)?'
+                            r'(\.dev\d+)?$')
 GIT_DESCRIBE = ('git', 'describe')
-GIT_DESCRIBE_ARGS = ('--tags', '--dirty')
+GIT_DESCRIBE_ARGS = ('--tags', '--dirty', '--abbrev=40', '--long')
 
 
 def find_package(path):
@@ -98,12 +105,21 @@ def git_describe(describe_args):
 
     Returns
     -------
+    data : dict
+        Dictionary of repo data. The fields are listed below
+
     tag : str
         The git tag for this version
     description : str
         The output of ``git describe``
     is_dev : bool
-        True if this is version is a developer build
+        True if is_dirty or if addl_commits > 0
+    is_dirty : bool
+        True if the git repo is dirty
+    addl_commits : int
+        The number of additional commits on top of the tag ref
+    ref : str
+        The ref for the current commit
 
     Raises
     ------
@@ -119,17 +135,32 @@ def git_describe(describe_args):
               "commit, and that the tag matches the 'tag_match' argument")
         print e.output
         raise
-    adding_dirty = any([arg.startswith('--dirty') for arg in describe_args])
-    is_dev = DEV_BUILD.match(description)
-    if is_dev:
-        components = description.split('-')
-        if adding_dirty:
-            components = components[:-1]
-        parent_count = components[-2]
-        tag = '-'.join(components[:-2]) + '.dev%s' % parent_count
-    else:
-        tag = description
-    return tag, description, is_dev
+    components = description.split('-')
+    # trim off the dirty suffix
+    dirty_suffix = '-dirty'
+    is_dirty = False
+    for arg in describe_args:
+        if arg.startswith('--dirty='):
+            dirty_suffix = arg.split('=')[1]
+            break
+    if dirty_suffix.startswith('-') and components[-1] == dirty_suffix[1:]:
+        components = components[:-1]
+        is_dirty = True
+    elif components[-1].endswith(dirty_suffix):
+        components[-1] = components[-1][:-len(dirty_suffix)]
+        is_dirty = True
+
+    ref = components[-1][1:]
+    addl_commits = int(components[-2])
+    tag = '-'.join(components[:-2])
+    return {
+        'tag': tag,
+        'description': description,
+        'is_dirty': is_dirty,
+        'is_dev': is_dirty or addl_commits > 0,
+        'addl_commits': addl_commits,
+        'ref': ref,
+    }
 
 
 def git_version(package=None,
@@ -153,9 +184,9 @@ def git_version(package=None,
     version_mod : str, optional
         The name of the file to write the version into (default '__version__.py')
     post_process : callable, optional
-        A function that accepts the git tag version and processes it. This can
-        be used to convert custom tags into version numbers (ex. 'v0.1' =>
-        '0.1') (default None)
+        A function that accepts the output of :meth:`.git_describe` and
+        optionally mutates it. This can be used to convert custom tags into
+        version numbers (ex. 'v0.1' => '0.1') (default None)
     source_url_format : str, optional
         A format string for the url. (ex.
         'https://github.com/pypa/pip/archive/%(version)s.zip') (default None)
@@ -188,15 +219,26 @@ def git_version(package=None,
     if not os.path.isdir(os.path.join(here, '.git')):
         return parse_constants(version_file_path)
 
-    describe_args = GIT_DESCRIBE_ARGS + ('--match=%s' % tag_match,)
-    tag, description, is_dev = git_describe(describe_args)
+    describe_args = GIT_DESCRIBE_ARGS
+    if tag_match is not None:
+        describe_args += ('--match=%s' % tag_match,)
+    version_data = git_describe(describe_args)
     if post_process is not None:
-        tag = post_process(tag)
+        post_process(version_data)
+    if version_data['is_dev']:
+        version_data['tag'] = (version_data['tag'] +
+                               ".dev%(addl_commits)d" % version_data)
+
     data = {
-        'version': tag,
-        'source_label': description,
+        'version': version_data['tag'],
+        'source_label': version_data['description'],
     }
-    if source_url_format is not None and (source_url_on_dev or not is_dev):
+    if source_url_format is not None and \
+            (source_url_on_dev or not version_data['is_dev']):
         data['source_url'] = source_url_format % data
     write_constants(version_file_path, **data)
+
+    if not VERSION_SCHEME.match(data['version']):
+        warnings.warn("Package version '%(version)s' "
+                      "is not a valid PEP 440 version string!" % data)
     return data
