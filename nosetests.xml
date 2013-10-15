@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?><testsuite name="nosetests" tests="4" errors="0" failures="0" skip="0"><testcase classname="gitbox.tests.UnboxTest" name="test_create_virtualenv" time="0.001"><system-out><![CDATA[Creating virtualenv
-]]></system-out></testcase><testcase classname="gitbox.tests.UnboxTest" name="test_create_virtualenv_child" time="0.001"><system-out><![CDATA[Creating virtualenv
-]]></system-out></testcase><testcase classname="gitbox.tests.UnboxTest" name="test_create_virtualenv_dependency" time="0.001"><system-out><![CDATA[Creating virtualenv
-]]></system-out></testcase><testcase classname="gitbox.tests.UnboxTest" name="test_create_virtualenv_dependency_no_env" time="0.001"><system-out><![CDATA[Creating virtualenv
-]]></system-out></testcase></testsuite>
