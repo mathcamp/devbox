@@ -145,8 +145,7 @@ def configure(repo):
                     outfile.write(r'source ' + os.path.join(env, 'bin',
                                                             'activate'))
                 else:
-                    outfile.write(r"_envdir=$(dirname "
-                                  r"${_files[_file-__array_offset]})")
+                    outfile.write(r'_envdir=$(dirname "$1")')
                     outfile.write('\n')
                     outfile.write(r'source $_envdir/' +
                                   os.path.join(env, 'bin', 'activate'))
