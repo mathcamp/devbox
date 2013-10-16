@@ -3,5 +3,5 @@
 dist
 *.egg-info
 *.egg
-__version__.py
+_version.py
 venv

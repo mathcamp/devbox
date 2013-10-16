@@ -10,7 +10,7 @@ But it's not. So here's how the stupid hacks work.
 When you run ``python setup.py``, if you are running it from inside of a git
 repository this script with generate a unique version number and embed it in an
 auto-generated file in your package. By default the file is named
-'__version__.py', and you should add it to your ``.gitignore``. Since this is a
+'_version.py', and you should add it to your ``.gitignore``. Since this is a
 python file and it's in your package, it will get bundled up and distributed
 with your package. Then during the installation process, this script will
 recognize that it is not longer being run from within a git repository and find
@@ -19,7 +19,6 @@ the version number from the file it generated earlier.
 """
 import os
 import re
-import warnings
 
 import subprocess
 
@@ -120,6 +119,8 @@ def git_describe(describe_args):
         The number of additional commits on top of the tag ref
     ref : str
         The ref for the current commit
+    dirty_suffix : str
+        The string that would denote that the working copy is dirty
 
     Raises
     ------
@@ -160,15 +161,17 @@ def git_describe(describe_args):
         'is_dev': is_dirty or addl_commits > 0,
         'addl_commits': addl_commits,
         'ref': ref,
+        'dirty_suffix': dirty_suffix,
     }
 
 
 def git_version(package=None,
                 tag_match='[0-9]*',
-                version_mod='__version__.py',
+                version_mod='_version.py',
                 post_process=None,
                 source_url_format=None,
-                source_url_on_dev=False):
+                source_url_on_dev=False,
+                pep440=False):
     """
     Generate the version from the git revision, or retrieve it from the
     auto-generated module
@@ -182,7 +185,7 @@ def git_version(package=None,
         Match only tags with this format (default '[0-9]*'). Note that this
         uses glob matching, not PCRE.
     version_mod : str, optional
-        The name of the file to write the version into (default '__version__.py')
+        The name of the file to write the version into (default '_version.py')
     post_process : callable, optional
         A function that accepts the output of :meth:`.git_describe` and
         optionally mutates it. This can be used to convert custom tags into
@@ -190,8 +193,10 @@ def git_version(package=None,
     source_url_format : str, optional
         A format string for the url. (ex.
         'https://github.com/pypa/pip/archive/%(version)s.zip') (default None)
-    source_url_on_dev: bool, optional
+    source_url_on_dev : bool, optional
         Attach a source_url even on developer builds (default False)
+    pep440 : bool, optional
+        If true, create a PEP 440 compatible version number (default False)
 
     Returns
     -------
@@ -199,11 +204,9 @@ def git_version(package=None,
         Dictionary of version data. The fields are listed below.
 
     version : str
-        The unique version of this package formatted for `PEP 440
-        <http://www.python.org/dev/peps/pep-0440>`_
+        The unique version of this package
     source_label : str
-        The unique version of this package with the git ref embedded, as per
-        the output of ``git describe``.
+        VERSION-DISTANCE-gHASH
     source_url : str, optional
         A string containing a full URL where the source for this specific
         version of the distribution can be downloaded
@@ -226,19 +229,28 @@ def git_version(package=None,
     if post_process is not None:
         post_process(version_data)
     if version_data['is_dev']:
-        version_data['tag'] = (version_data['tag'] +
-                               ".dev%(addl_commits)d" % version_data)
+        if pep440:
+            version = (version_data['tag'] +
+                       ".post0.dev%(addl_commits)d" % version_data)
+        else:
+            version = "{tag}-{addl_commits}-g{ref:<.7}".format(**version_data)
+            if version_data['is_dirty']:
+                version += version_data['dirty_suffix']
+    else:
+        version = version_data['tag']
 
     data = {
-        'version': version_data['tag'],
         'source_label': version_data['description'],
+        'version': version,
     }
+
     if source_url_format is not None and \
             (source_url_on_dev or not version_data['is_dev']):
         data['source_url'] = source_url_format % data
     write_constants(version_file_path, **data)
 
-    if not VERSION_SCHEME.match(data['version']):
-        warnings.warn("Package version '%(version)s' "
-                      "is not a valid PEP 440 version string!" % data)
+    if pep440 and not VERSION_SCHEME.match(data['version']):
+        raise Exception("Package version '%(version)s' "
+                        "is not a valid PEP 440 version string!" % data)
+
     return data
