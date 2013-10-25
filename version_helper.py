@@ -72,6 +72,11 @@ def find_package(path):
 
 def parse_constants(filename):
     """ Parse python constants from a file """
+    if not os.path.exists(filename):
+        return {
+            'source_label': 'NOTAG',
+            'version': '0.0.0',
+        }
     constants = {}
     with open(filename, 'r') as infile:
         for line in infile:
