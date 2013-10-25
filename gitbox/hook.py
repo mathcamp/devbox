@@ -6,16 +6,26 @@ This pre-commit hook was originally based on a hook by Lorenzo Bolla
 https://github.com/lbolla/dotfiles/blob/master/githooks/pre-commit
 
 """
-import json
-import tempfile
-import os
-import shutil
-import sys
-import subprocess
-import contextlib
 import fnmatch
+import os
+import sys
+
+import contextlib
+import json
+import shlex
+import shutil
+import subprocess
+import tempfile
+
 
 CONF_FILE = 'gitbox.conf'
+
+
+def convert_command(cmd):
+    """ If a command is a string, convert it to list form for subprocess """
+    if isinstance(cmd, basestring):
+        return shlex.split(cmd)
+    return cmd
 
 
 @contextlib.contextmanager
@@ -58,6 +68,7 @@ def run_checks(conf, tmpdir):
                     continue
                 printed_filename = False
                 for command in commands:
+                    command = convert_command(command)
                     proc = subprocess.Popen(command + [filename],
                                             env={'PATH': path},
                                             stdout=subprocess.PIPE,
@@ -74,6 +85,7 @@ def run_checks(conf, tmpdir):
                         retcode |= proc.returncode
 
         for command in conf['all']:
+            command = convert_command(command)
             retcode |= subprocess.call(command)
 
     return retcode
