@@ -130,23 +130,6 @@ def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
                     subprocess.check_call(cmd)
 
 
-def install(conf, dest):
-    """ Install requirements and package into virtualenv """
-    with pushd(dest):
-        if conf['env']['path'] is not None:
-            pip = os.path.join(conf['env']['path'], 'bin', 'pip')
-        else:
-            pip = 'pip'
-
-        # Install requirements if present
-        if os.path.exists('requirements_dev.txt'):
-            print "Installing requirements_dev.txt"
-            subprocess.check_call([pip, 'install', '-r',
-                                   'requirements_dev.txt'])
-        print "Installing", dest
-        subprocess.check_call([pip, 'install', '-e', '.'])
-
-
 def post_setup(conf, dest):
     """ Run any post-setup scripts """
     with pushd(dest):
@@ -203,7 +186,6 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
     for dep in conf.get('dependencies', []):
         unbox(dep, None, virtualenv_cmd, virtualenv, True)
 
-    install(conf, dest)
     post_setup(conf, dest)
 
 

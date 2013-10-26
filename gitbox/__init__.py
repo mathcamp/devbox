@@ -83,6 +83,8 @@ def configure(repo):
     conf = load_conf()
     conf.setdefault('all', [])
     conf.setdefault('dependencies', [])
+    conf.setdefault('pre_setup', [])
+    conf.setdefault('post_setup', [])
     conf.setdefault('modified', {})
 
     env = prompt("Path of virtualenv (relative to repository root)? "
@@ -165,9 +167,16 @@ def configure(repo):
     st = os.stat(precommit_file)
     os.chmod(precommit_file, st.st_mode | stat.S_IEXEC)
 
-    # Write the required packages to a file
+    # Write the required packages to a requirements file
     if requirements:
         append(requirements, os.path.join(repo, 'requirements_dev.txt'))
+        command = 'pip install -r requirements_dev.txt'
+        if command not in conf['post_setup']:
+            conf['post_setup'].append(command)
+
+    install_cmd = 'pip install -e .'
+    if install_cmd not in conf['post_setup']:
+        conf['post_setup'].append(install_cmd)
 
     # Create the pylint & pep8 config files
     if install_pylintrc or install_pep8:
