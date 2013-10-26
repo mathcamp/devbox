@@ -144,7 +144,7 @@ def post_setup(conf, dest):
             subprocess.Popen(command, **kwargs)
 
 
-def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
+def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
     """
     Set up a repository for development
 
@@ -162,6 +162,8 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
     is_dep : bool
         True if this repo is being installed as a dependency for another boxed
         repo
+    setup_deps : bool
+        If True, clone and set up any repos marks as a dependency in the conf
 
     """
     if os.path.exists(repo) and dest is None:
@@ -186,8 +188,9 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
         virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
     else:
         virtualenv = None
-    for dep in conf.get('dependencies', []):
-        unbox(dep, None, virtualenv_cmd, virtualenv, True)
+    if setup_deps:
+        for dep in conf.get('dependencies', []):
+            unbox(dep, None, virtualenv_cmd, virtualenv, True, True)
 
     post_setup(conf, dest)
 
@@ -199,9 +202,11 @@ def main():
                         "to unbox")
     parser.add_argument('dest', nargs='?', help="Directory to clone into")
     parser.add_argument('-v', help="Virtualenv binary", default='virtualenv')
+    parser.add_argument('--no-deps', action='store_true',
+                        help="Do not clone and set up the dependencies")
     args = vars(parser.parse_args())
 
-    unbox(args['repo'], args['dest'], args['v'], None, False)
+    unbox(args['repo'], args['dest'], args['v'], None, False, args['--no-deps'])
 
 
 if __name__ == '__main__':
