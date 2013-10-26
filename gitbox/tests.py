@@ -2,10 +2,11 @@
 import os
 
 import subprocess
+import tempfile
 from mock import patch
 from unittest import TestCase
 
-from . import unbox
+from . import unbox, append
 
 
 # pylint: disable=E1101
@@ -84,5 +85,64 @@ class UnboxTest(TestCase):
         self.existing.add('../parentrepo/venv')
         patch.object(unbox, 'load_conf', lambda _: parent_conf).start()
         unbox.create_virtualenv(conf, 'testrepo', 'virtualenv', None, False)
-        os.symlink.assert_called_with(
-            '../parentrepo/venv', conf['env']['path'])
+        os.symlink.assert_called_with('../parentrepo/venv',
+                                      conf['env']['path'])
+
+
+class UtilTest(TestCase):
+
+    """ Test utility functions """
+    def setUp(self):
+        super(UtilTest, self).setUp()
+        self.tmp = tempfile.mktemp()
+
+    def tearDown(self):
+        super(UtilTest, self).tearDown()
+        if os.path.exists(self.tmp):
+            os.unlink(self.tmp)
+
+    def test_append_new(self):
+        """ Appending lines to a new file adds those lines to the file """
+        lines = ['first line', 'another line']
+        append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_blank(self):
+        """ Appending lines to a file adds those lines to the file """
+        with open(self.tmp, 'w') as outfile:
+            outfile.write('')
+        lines = ['first line', 'another line']
+        append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_no_duplicates(self):
+        """ Appending lines to a file does not result in duplicate lines """
+        with open(self.tmp, 'w') as outfile:
+            outfile.write('first line\n')
+        lines = ['first line', 'another line']
+        append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_no_disturb(self):
+        """ Appending lines to a file ignores existing text """
+        text = 'pre-existing text\nThat will need to be ignored\n'
+        with open(self.tmp, 'w') as outfile:
+            outfile.write(text)
+        lines = ['first line', 'another line']
+        append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), text + '\n'.join(lines) + '\n')
+
+    def test_append_prepend_newline(self):
+        """ Appending lines to a file adds a leading newline if needed """
+        text = 'pre-existing text\nThat will need to be ignored'
+        with open(self.tmp, 'w') as outfile:
+            outfile.write(text)
+        lines = ['first line', 'another line']
+        append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), text + '\n' + '\n'.join(lines) +
+                              '\n')

@@ -38,19 +38,25 @@ def promptyn(msg, default=None):
 
 def append(lines, filename):
     """ Append one or more lines to a file if they are not already present """
+    prepend_newline = False
     if os.path.exists(filename):
         with open(filename, 'r') as infile:
-            file_lines = set(infile.read().splitlines())
+            text = infile.read()
+            if text and not text.endswith('\n'):
+                prepend_newline = True
+            file_lines = set(text.splitlines())
     else:
         file_lines = set()
 
     to_append = set(lines) - file_lines
     if to_append:
         with open(filename, 'a') as outfile:
-            outfile.write('\n')
-            for line in to_append:
-                outfile.write(line)
+            if prepend_newline:
                 outfile.write('\n')
+            for line in lines:
+                if line in to_append:
+                    outfile.write(line)
+                    outfile.write('\n')
 
 
 def remove_duplicate_commands(commands):
@@ -58,7 +64,8 @@ def remove_duplicate_commands(commands):
     seen = set()
     index = 0
     while index < len(commands):
-        command = tuple(commands[index])
+        if not isinstance(commands[index], basestring):
+            command = ' '.join(commands[index])
         if command in seen:
             del commands[index]
             continue
@@ -74,45 +81,99 @@ def copy_static(name, dest):
         shutil.copyfile(srcfile, destfile)
 
 
-def configure(repo):
-    """ Prompt user for default values """
-    standalone = promptyn("If standalone mode is disabled, your pre-commit "
-                          "hooks will require gitbox to be "
-                          "installed\nStandalone mode?", True)
+def configure(repo, language_config=None):
+    """ Set up a repository with gitbox """
+    if not os.path.exists(repo):
+        os.makedirs(repo)
 
-    conf = load_conf()
+    conf = load_conf(repo)
     conf.setdefault('dependencies', [])
     conf.setdefault('pre_setup', [])
     conf.setdefault('post_setup', [])
     conf.setdefault('hooks_all', [])
     conf.setdefault('hooks_modified', {})
+    pre_commit = []
 
+    standalone = promptyn("If standalone mode is disabled, your pre-commit "
+                          "hooks will require gitbox to be "
+                          "installed\nStandalone mode?", True)
+
+    if promptyn("Prohibit trailing whitespace?", True):
+        pre_commit.append("git diff-index --check --cached HEAD --")
+
+    hookdir = os.path.join(repo, 'git_hooks')
+    if not os.path.exists(hookdir):
+        os.makedirs(hookdir)
+
+    if language_config is not None:
+        language_config(repo, conf)
+
+    # Construct the proper pre-commit hook command
+    if standalone:
+        hookfile = os.path.join(hookdir, 'hook.py')
+        shutil.copyfile(os.path.join(os.path.dirname(__file__), 'hook.py'),
+                        hookfile)
+        if 'env' in conf:
+            python = os.path.join(conf['env']['path'], 'bin', 'python')
+        else:
+            python = 'python'
+        hook_cmd = python + ' ' + os.path.join('git_hooks', 'hook.py')
+    else:
+        if 'env' in conf:
+            hook_cmd = os.path.join(conf['env']['path'], 'bin',
+                                    'gitbox-pre-commit')
+        else:
+            hook_cmd = 'gitbox-pre-commit'
+
+    if 'env' in conf and not os.path.isabs(conf['env']['path']):
+        hook_cmd = os.path.join('.', hook_cmd)
+    pre_commit.append(hook_cmd)
+
+    # Write the pre-commit file
+    precommit_file = os.path.join(hookdir, 'pre-commit')
+    if not os.path.exists(precommit_file):
+        pre_commit.insert(0, "#!/bin/bash -e")
+    append(pre_commit, precommit_file)
+    st = os.stat(precommit_file)
+    os.chmod(precommit_file, st.st_mode | stat.S_IEXEC)
+
+    # Remove duplicates from commands
+    remove_duplicate_commands(conf['hooks_all'])
+    for commands in conf['hooks_modified'].values():
+        remove_duplicate_commands(commands)
+    conf_file = os.path.join(repo, CONF_FILE)
+    with open(conf_file, 'w') as outfile:
+        json.dump(conf, outfile)
+
+
+def configure_python(repo, conf):
+    """ Add some default python options to the repository """
+    conf['hooks_modified'].setdefault('*.py', [])
     env = prompt("Path of virtualenv (relative to repository root)? "
                  "[venv]", 'venv')
     conf['env'] = {
         'path': env,
         'args': [],
     }
-    autoenv = promptyn("Use autoenv?", True)
+    autoenv = promptyn("Generate autoenv file?", True)
 
-    modified = defaultdict(list)
-    modified.update(conf['hooks_modified'])
     requirements = []
     install_pylintrc = False
     install_pep8 = False
-    pre_commit = []
     if promptyn("Run pylint on commit?", True):
-        modified['*.py'].append(['pylint', '--rcfile=pylint/pylintrc'])
+        conf['hooks_modified']['*.py'].append(['pylint',
+                                               '--rcfile=pylint/pylintrc'])
         requirements.append('pylint==0.28.0')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
-        modified['*.py'].append(['pep8', '--config=pylint/pep8.ini'])
+        conf['hooks_modified']['*.py'].append(['pep8',
+                                               '--config=pylint/pep8.ini'])
         install_pep8 = True
         requirements.append('pep8')
 
     if promptyn("Run pyflakes on commit?", False):
-        modified['*.py'].append(['pyflakes'])
+        conf['hooks_modified']['*.py'].append(['pyflakes'])
         requirements.append('pyflakes')
 
     if promptyn("Add autoPEP8 command?", True):
@@ -130,42 +191,10 @@ def configure(repo):
         append(['include version_helper.py'],
                os.path.join(repo, 'MANIFEST.in'))
 
-    if promptyn("Prohibit trailing whitespace?", True):
-        pre_commit.append("git diff-index --check --cached HEAD --")
-
     if promptyn("Pylint entire package on commit? (slooooow)", False):
         conf['hooks_all'].append(['pylint', '--rcfile=pylint/pylintrc',
                                   repo])
         install_pylintrc = True
-
-    hookdir = os.path.join(repo, 'git_hooks')
-    if not os.path.exists(hookdir):
-        os.makedirs(hookdir)
-
-    # Construct the proper pre-commit hook command
-    if standalone:
-        hookfile = os.path.join(hookdir, 'hook.py')
-        shutil.copyfile(os.path.join(os.path.dirname(__file__), 'hook.py'),
-                        hookfile)
-        python = os.path.join(env, 'bin', 'python')
-        hook_cmd = python + ' ' + os.path.join('git_hooks', 'hook.py')
-    else:
-        hook_cmd = os.path.join(env, 'bin', 'gitbox-pre-commit')
-
-    if not os.path.isabs(env):
-        hook_cmd = os.path.join('.', hook_cmd)
-    pre_commit.append(hook_cmd)
-
-    # Write the pre-commit file
-    precommit_file = os.path.join(hookdir, 'pre-commit')
-    if not os.path.exists(precommit_file):
-        with open(precommit_file, 'w') as outfile:
-            outfile.write("#!/bin/bash -e\n")
-            outfile.write('\n'.join(pre_commit))
-    else:
-        append(pre_commit, precommit_file)
-    st = os.stat(precommit_file)
-    os.chmod(precommit_file, st.st_mode | stat.S_IEXEC)
 
     # Write the required packages to a requirements file
     if requirements:
@@ -199,30 +228,32 @@ def configure(repo):
                 else:
                     outfile.write(r'_envdir=$(dirname "$1")')
                     outfile.write('\n')
-                    outfile.write(r'source $_envdir/' +
-                                  os.path.join(env, 'bin', 'activate'))
+                    outfile.write(r'source ' + os.path.join(r'$_envdir', env,
+                                                            'bin', 'activate'))
 
     # Write the virtualenv file to .gitignore
     append([conf['env']['path']], os.path.join(repo, '.gitignore'))
 
-    # Remove duplicates from commands
-    remove_duplicate_commands(conf['hooks_all'])
-    for key, value in modified.items():
-        remove_duplicate_commands(value)
-        conf['hooks_modified'][key] = value
-    conf_file = os.path.join(repo, CONF_FILE)
-    with open(conf_file, 'w') as outfile:
-        json.dump(conf, outfile)
 
-    print "Box files created! Now just add and commit them."
+LANGUAGE_MAP = {
+    'python': configure_python,
+    'none': None,
+}
 
 
 def create():
     """ Create box metadata files in a repository """
     parser = argparse.ArgumentParser(description=create.__doc__)
     parser.add_argument('repo', help="Location of the repository to box")
+    parser.add_argument('-l', default='auto', help="Language (default "
+                        "%(default)s)", choices=LANGUAGE_MAP.keys())
     args = vars(parser.parse_args())
     try:
-        configure(args['repo'])
+        if args['l'] == 'auto':
+            if os.path.exists(os.path.join(args['repo'], 'setup.py')):
+                args['l'] = 'python'
+            else:
+                args['l'] = 'none'
+        configure(args['repo'], LANGUAGE_MAP[args['l']])
     except KeyboardInterrupt:
         print
