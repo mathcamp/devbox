@@ -50,7 +50,7 @@ def run_checks(conf, tmpdir):
         binpath = os.path.join(os.path.abspath(conf['env']['path']), 'bin')
         path = binpath + ':' + path
     with pushd(tmpdir):
-        for pattern, commands in conf['modified'].iteritems():
+        for pattern, commands in conf.get('hooks_modified', {}).iteritems():
             for filename in modified:
                 if not fnmatch.fnmatch(filename, pattern):
                     continue
@@ -72,7 +72,7 @@ def run_checks(conf, tmpdir):
                         print output
                         retcode |= proc.returncode
 
-        for command in conf['all']:
+        for command in conf.get('hooks_all', []):
             command = convert_command(command)
             retcode |= subprocess.call(command)
 

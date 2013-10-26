@@ -81,11 +81,11 @@ def configure(repo):
                           "installed\nStandalone mode?", True)
 
     conf = load_conf()
-    conf.setdefault('all', [])
     conf.setdefault('dependencies', [])
     conf.setdefault('pre_setup', [])
     conf.setdefault('post_setup', [])
-    conf.setdefault('modified', {})
+    conf.setdefault('hooks_all', [])
+    conf.setdefault('hooks_modified', {})
 
     env = prompt("Path of virtualenv (relative to repository root)? "
                  "[venv]", 'venv')
@@ -96,7 +96,7 @@ def configure(repo):
     autoenv = promptyn("Use autoenv?", True)
 
     modified = defaultdict(list)
-    modified.update(conf['modified'])
+    modified.update(conf['hooks_modified'])
     requirements = []
     install_pylintrc = False
     install_pep8 = False
@@ -134,8 +134,8 @@ def configure(repo):
         pre_commit.append("git diff-index --check --cached HEAD --")
 
     if promptyn("Pylint entire package on commit? (slooooow)", False):
-        conf['all'].append(['pylint', '--rcfile=pylint/pylintrc',
-                            repo])
+        conf['hooks_all'].append(['pylint', '--rcfile=pylint/pylintrc',
+                                  repo])
         install_pylintrc = True
 
     hookdir = os.path.join(repo, 'git_hooks')
@@ -206,10 +206,10 @@ def configure(repo):
     append([conf['env']['path']], os.path.join(repo, '.gitignore'))
 
     # Remove duplicates from commands
-    remove_duplicate_commands(conf['all'])
+    remove_duplicate_commands(conf['hooks_all'])
     for key, value in modified.items():
         remove_duplicate_commands(value)
-        conf['modified'][key] = value
+        conf['hooks_modified'][key] = value
     conf_file = os.path.join(repo, CONF_FILE)
     with open(conf_file, 'w') as outfile:
         json.dump(conf, outfile)
