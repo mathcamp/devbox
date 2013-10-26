@@ -105,29 +105,29 @@ def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
         The path to this
 
     """
+    if not conf.get('env'):
+        return
     with pushd(dest):
-        # Create virtualenv
-        if conf.get('env'):
-            # If installing as a dependency, link to prior virtualenv
-            if parent_virtualenv is not None \
-                    and not os.path.exists(conf['env']['path']):
-                os.symlink(parent_virtualenv, conf['env']['path'])
+        # If installing as a dependency, link to prior virtualenv
+        if parent_virtualenv is not None \
+                and not os.path.exists(conf['env']['path']):
+            os.symlink(parent_virtualenv, conf['env']['path'])
 
-            if not os.path.exists(conf['env']['path']):
-                # If parent is defined, try to link to the parent's virtualenv
-                if not is_dep and conf.get('parent'):
-                    parent = os.path.join(os.pardir, conf['parent'])
-                    if os.path.exists(parent):
-                        parent_conf = load_conf(parent)
-                        parent_venv = os.path.join(parent,
-                                                   parent_conf['env']['path'])
-                        if os.path.exists(parent_venv):
-                            os.symlink(parent_venv, conf['env']['path'])
-                else:
-                    print "Creating virtualenv"
-                    cmd = ([virtualenv_cmd] + conf['env']['args'] +
-                           [conf['env']['path']])
-                    subprocess.check_call(cmd)
+        if not os.path.exists(conf['env']['path']):
+            # If parent is defined, try to link to the parent's virtualenv
+            if not is_dep and conf.get('parent'):
+                parent = os.path.join(os.pardir, conf['parent'])
+                if os.path.exists(parent):
+                    parent_conf = load_conf(parent)
+                    parent_venv = os.path.join(parent,
+                                               parent_conf['env']['path'])
+                    if os.path.exists(parent_venv):
+                        os.symlink(parent_venv, conf['env']['path'])
+            else:
+                print "Creating virtualenv"
+                cmd = ([virtualenv_cmd] + conf['env']['args'] +
+                       [conf['env']['path']])
+                subprocess.check_call(cmd)
 
 
 def post_setup(conf, dest):
@@ -137,7 +137,7 @@ def post_setup(conf, dest):
             if isinstance(command, basestring):
                 command = shlex.split(command)
             kwargs = {}
-            if conf['env']['path'] is not None:
+            if conf.get('env', {}).get('path') is not None:
                 kwargs['env'] = {
                     'PATH': os.path.join(conf['env']['path'], 'bin')
                 }
@@ -182,7 +182,10 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep):
     create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep)
 
     # Install other gitbox repos, if any
-    virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
+    if conf.get('env'):
+        virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
+    else:
+        virtualenv = None
     for dep in conf.get('dependencies', []):
         unbox(dep, None, virtualenv_cmd, virtualenv, True)
 
