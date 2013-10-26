@@ -17,7 +17,7 @@ import shutil
 import subprocess
 
 
-CONF_FILE = 'gitbox.conf'
+CONF_FILE = '.gitbox.conf'
 HOME = os.environ['HOME']
 
 

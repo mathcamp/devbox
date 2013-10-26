@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 
 
-CONF_FILE = 'gitbox.conf'
+CONF_FILE = '.gitbox.conf'
 
 
 def convert_command(cmd):
@@ -37,18 +37,6 @@ def pushd(directory):
         yield
     finally:
         os.chdir(curdir)
-
-
-def get_modified(pattern):
-    """Get a list of new and modified files for this commit"""
-    out = subprocess.check_output(['git', 'diff', '--cached', '--name-only',
-                                   '--diff-filter=ACMRT'])
-    modifieds = []
-    for line in out.splitlines():
-        stripped_line = line.strip()
-        if fnmatch.fnmatch(stripped_line, pattern):
-            modifieds.append(stripped_line)
-    return modifieds
 
 
 def run_checks(conf, tmpdir):
