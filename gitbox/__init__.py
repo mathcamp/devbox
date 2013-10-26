@@ -7,7 +7,50 @@ import json
 import shutil
 from collections import defaultdict
 
-from .unbox import prompt, promptyn, append, load_conf, CONF_FILE
+from .unbox import load_conf, CONF_FILE
+
+
+def prompt(msg, default=None, arg_type=str):
+    """ Prompt the user for input """
+    value = raw_input(msg + ' ')
+    if not value.strip():
+        return default
+    return arg_type(value)
+
+
+def promptyn(msg, default=None):
+    """ Display a blocking prompt until the user confirms """
+    while True:
+        yes = "Y" if default else "y"
+        if default or default is None:
+            no = "n"
+        else:
+            no = "N"
+        confirm = raw_input("%s [%s/%s] " % (msg, yes, no))
+        confirm = confirm.lower().strip()
+        if confirm == "y" or confirm == "yes":
+            return True
+        elif confirm == "n" or confirm == "no":
+            return False
+        elif len(confirm) == 0 and default is not None:
+            return default
+
+
+def append(lines, filename):
+    """ Append one or more lines to a file if they are not already present """
+    if os.path.exists(filename):
+        with open(filename, 'r') as infile:
+            file_lines = set(infile.read().splitlines())
+    else:
+        file_lines = set()
+
+    to_append = set(lines) - file_lines
+    if to_append:
+        with open(filename, 'a') as outfile:
+            outfile.write('\n')
+            for line in to_append:
+                outfile.write(line)
+                outfile.write('\n')
 
 
 def remove_duplicate_commands(commands):
