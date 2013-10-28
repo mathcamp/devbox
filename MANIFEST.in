@@ -1,5 +1,5 @@
-include pylint/pylintrc
-include pylint/pep8.ini
+include .pylintrc
+include .pep8.ini
 include README.rst
 include CHANGES.txt
 include version_helper.py

@@ -162,13 +162,13 @@ def configure_python(repo, conf):
     install_pep8 = False
     if promptyn("Run pylint on commit?", True):
         conf['hooks_modified']['*.py'].append(['pylint',
-                                               '--rcfile=pylint/pylintrc'])
+                                               '--rcfile=.pylintrc'])
         requirements.append('pylint==0.28.0')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
         conf['hooks_modified']['*.py'].append(['pep8',
-                                               '--config=pylint/pep8.ini'])
+                                               '--config=.pep8.ini'])
         install_pep8 = True
         requirements.append('pep8')
 
@@ -192,7 +192,7 @@ def configure_python(repo, conf):
                os.path.join(repo, 'MANIFEST.in'))
 
     if promptyn("Pylint entire package on commit? (slooooow)", False):
-        conf['hooks_all'].append(['pylint', '--rcfile=pylint/pylintrc',
+        conf['hooks_all'].append(['pylint', '--rcfile=.pylintrc',
                                   repo])
         install_pylintrc = True
 
@@ -213,9 +213,9 @@ def configure_python(repo, conf):
         if not os.path.exists(pylintdir):
             os.makedirs(pylintdir)
         if install_pylintrc:
-            copy_static(os.path.join('pylint', 'pylintrc'), repo)
+            copy_static('.pylintrc', repo)
         if install_pep8:
-            copy_static(os.path.join('pylint', 'pep8.ini'), repo)
+            copy_static('.pep8.ini', repo)
 
     # Add the autoenv file to activate the virtualenv
     if autoenv:
