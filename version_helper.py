@@ -134,7 +134,7 @@ def git_describe(describe_args):
         If there is an error running ``git describe``
 
     """
-    encoding = locale.getdefaultlocale()[1]
+    encoding = locale.getdefaultlocale()[1] or 'utf-8'
     try:
         description = (subprocess.check_output(GIT_DESCRIBE + describe_args)
                        .decode(encoding)
