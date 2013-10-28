@@ -5,3 +5,4 @@ dist
 *.egg
 _version.py
 venv
+.tox
