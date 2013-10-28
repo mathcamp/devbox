@@ -52,98 +52,94 @@ def repo_name_from_url(url):
     return all_words[-1]
 
 
-def pre_setup(conf, dest):
+def pre_setup(conf):
     """ Run any pre-setup scripts """
-    with pushd(dest):
-        for command in conf.get('pre_setup', []):
-            if isinstance(command, basestring):
-                command = shlex.split(command)
-            subprocess.check_call(command)
+    for command in conf.get('pre_setup', []):
+        if isinstance(command, basestring):
+            command = shlex.split(command)
+        subprocess.check_call(command)
 
 
-def setup_git_hooks(dest):
+def setup_git_hooks():
     """ Set up a symlink to the git hooks directory """
-    with pushd(dest):
-        # Symlink to git hooks
-        if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
-            print "Installing git hooks"
-            shutil.rmtree('.git/hooks')
-            os.symlink('../git_hooks', '.git/hooks')
+    # Symlink to git hooks
+    if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
+        print "Installing git hooks"
+        shutil.rmtree('.git/hooks')
+        os.symlink('../git_hooks', '.git/hooks')
 
 
-def update_repo(repo, dest):
+def update_repo(repo):
     """ Make sure the repository is up-to-date """
-    with pushd(dest):
-        print "Updating", repo
-        # Update the repo safely (don't discard changes)
-        subprocess.call(['git', 'pull', '--ff-only'])
-        # Update any submodules
-        subprocess.call(['git', 'submodule', 'update', '--init',
-                        '--recursive'])
+    print "Updating", repo
+    # Update the repo safely (don't discard changes)
+    subprocess.call(['git', 'pull', '--ff-only'])
+    # Update any submodules
+    subprocess.call(['git', 'submodule', 'update', '--init',
+                    '--recursive'])
 
 
-def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
+def create_virtualenv(env, venv_bin, venv, parent):
     """
     Create a virtualenv, or link to the correct virtualenv
 
     Parameters
     ----------
-    conf : dict
-        The devbox conf data
-    dest : str
-        The name of the repository to create the virtualenv for
-    virtualenv_cmd : str
+    env : dict
+        The 'env' key from the config file. Contains 'path' and 'args'.
+    venv_bin : str
         The path to the virtualenv command to use for creating a virtualenv
-    parent_virtualenv : str or None
+    venv : str or None
         The path to the parent's virtualenv, or None
-    is_dep : bool
-        If True, this repo is being set up as a dependency for another repo
+    parent : str or None
+        If present, search for a repo named this as a peer of the current repo,
+        and symlink to that repo's virtualenv if present.
 
     Returns
     -------
     virtualenv : str
-        The path to this
+        The absolute path to the created virtualenv
 
     """
-    with pushd(dest):
-        # If installing as a dependency, link to prior virtualenv
-        if parent_virtualenv is not None \
-                and not os.path.exists(conf['env']['path']):
-            os.symlink(parent_virtualenv, conf['env']['path'])
+    # If installing as a dependency, link to prior virtualenv
+    if venv is not None and not os.path.exists(env['path']):
+        os.symlink(venv, env['path'])
 
-        if not os.path.exists(conf['env']['path']):
-            # If parent is defined, try to link to the parent's virtualenv
-            if not is_dep and conf.get('parent'):
-                parent = os.path.join(os.pardir, conf['parent'])
-                if os.path.exists(parent):
-                    parent_conf = load_conf(parent)
-                    parent_venv = os.path.join(parent,
-                                               parent_conf['env']['path'])
-                    if os.path.exists(parent_venv):
-                        os.symlink(parent_venv, conf['env']['path'])
-            else:
-                print "Creating virtualenv"
-                cmd = ([virtualenv_cmd] + conf['env']['args'] +
-                       [conf['env']['path']])
-                subprocess.check_call(cmd)
+    # If parent is defined, try to link to the parent's virtualenv
+    if parent is not None and not os.path.exists(env['path']):
+        parent_path = os.path.join(os.pardir, parent)
+        if os.path.exists(parent_path):
+            parent_conf = load_conf(parent_path)
+            venv = os.path.join(parent_path,
+                                parent_conf['env']['path'])
+            if os.path.exists(venv):
+                os.symlink(venv, env['path'])
+
+    # Otherwise, create a new virtualenv
+    if not os.path.exists(env['path']):
+        print "Creating virtualenv"
+        cmd = ([venv_bin] + env['args'] +
+               [env['path']])
+        subprocess.check_call(cmd)
+
+    return os.path.abspath(env['path'])
 
 
-def post_setup(conf, dest):
+def post_setup(conf):
     """ Run any post-setup scripts """
-    with pushd(dest):
-        for command in conf.get('post_setup', []):
-            if isinstance(command, basestring):
-                command = shlex.split(command)
-            kwargs = {}
-            if conf.get('env', {}).get('path') is not None:
-                kwargs['env'] = {
-                    'PATH': os.path.join(os.path.curdir, conf['env']['path'],
-                                         'bin') + ':' + os.environ['PATH']
-                }
-            subprocess.check_call(command, **kwargs)
+    for command in conf.get('post_setup', []):
+        if isinstance(command, basestring):
+            command = shlex.split(command)
+        kwargs = {}
+        if conf.get('env', {}).get('path') is not None:
+            kwargs['env'] = {
+                'PATH': os.path.join(os.path.curdir, conf['env']['path'],
+                                     'bin') + ':' + os.environ['PATH']
+            }
+        subprocess.check_call(command, **kwargs)
 
 
-def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
+def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
     """
     Set up a repository for development
 
@@ -153,16 +149,12 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
         The url of the git repository, or a path to the already cloned repo
     dest : str or None
         The directory to clone into, or None to use the default
-    virtualenv_cmd : str
+    no_deps : bool
+        If True, don't clone and set up dependency repos
+    venv_bin : str
         The path to the virtualenv binary
-    parent_virtualenv : str or None
-        Path to the virtualenv to use for the installation. None will use the
-        settings inside the devbox conf file
-    is_dep : bool
-        True if this repo is being installed as a dependency for another boxed
-        repo
-    setup_deps : bool
-        If True, clone and set up any repos marks as a dependency in the conf
+    venv : str or None
+        If not None, symlink to this path instead of creating a virtualenv
 
     """
     if os.path.exists(repo) and dest is None:
@@ -176,24 +168,24 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
         print "Cloning", repo
         subprocess.check_call(['git', 'clone', repo, dest])
 
-    update_repo(repo, dest)
-    conf = load_conf(dest)
-    pre_setup(conf, dest)
-    setup_git_hooks(dest)
-    if conf.get('env'):
-        create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv,
-                          is_dep)
+    with pushd(dest):
+        update_repo(repo)
+        conf = load_conf()
+        pre_setup(conf)
+        setup_git_hooks()
+
+        # If python, set up a virtualenv
+        if conf.get('env'):
+            venv = create_virtualenv(conf['env'], venv_bin, venv,
+                                     conf.get('parent'))
 
     # Install other devbox repos, if any
-    if conf.get('env'):
-        virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
-    else:
-        virtualenv = None
-    if setup_deps:
+    if not no_deps:
         for dep in conf.get('dependencies', []):
-            unbox(dep, None, virtualenv_cmd, virtualenv, True, True)
+            unbox(dep, None, no_deps, venv_bin, venv)
 
-    post_setup(conf, dest)
+    with pushd(dest):
+        post_setup(conf)
 
 
 def main():
@@ -206,13 +198,16 @@ def main():
                         help="Do not clone and set up the dependencies")
 
     group = parser.add_argument_group('python')
-    group.add_argument('--virtualenv', help="Virtualenv binary",
+    group.add_argument('--venv-bin', help="Virtualenv binary "
+                       "(default '%(default)s')",
                        default='virtualenv')
+    group.add_argument('--venv', help="Path to virtualenv to install into. "
+                       "Will symlink to this virtualenv instead of creating "
+                       "a new one.")
 
     args = vars(parser.parse_args())
 
-    unbox(args['repo'], args['dest'], args['virtualenv'], None, False,
-          args['no_deps'])
+    unbox(**args)
 
 
 if __name__ == '__main__':

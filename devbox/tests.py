@@ -41,57 +41,51 @@ class UnboxTest(TestCase):
 
     def test_create_virtualenv(self):
         """ Creating a virtualenv should run the 'virtualenv' command """
-        conf = {'env': {
+        env = {
             'path': 'venv',
             'args': [],
-        }}
-        unbox.create_virtualenv(conf, 'testrepo', 'virtualenv', None, False)
-        subprocess.check_call.assert_called_with(['virtualenv',
-                                                  conf['env']['path']])
+        }
+        unbox.create_virtualenv(env, 'virtualenv', None, None)
+        subprocess.check_call.assert_called_with(['virtualenv', env['path']])
 
     def test_create_virtualenv_dependency(self):
         """ Creating dependency virtualenv should symlink to parent """
-        conf = {'env': {
+        env = {
             'path': 'venv',
             'args': [],
-        }}
+        }
         virtualenv = '../parent/venv'
-        unbox.create_virtualenv(conf, 'testrepo', 'virtualenv', virtualenv,
-                                True)
-        os.symlink.assert_called_with(virtualenv, conf['env']['path'])
-
-    def test_create_virtualenv_dependency_no_env(self):
-        """ Dependency virtualenv should make env if parent is missing """
-        # If creating virtualenv for dependency, but parent has no env, create
-        # an env for the dep
-        conf = {'env': {
-            'path': 'venv',
-            'args': [],
-        }}
-        unbox.create_virtualenv(conf, 'testrepo', 'virtualenv', None, True)
-
-        subprocess.check_call.assert_called_with(['virtualenv',
-                                                  conf['env']['path']])
+        unbox.create_virtualenv(env, 'virtualenv', virtualenv, None)
+        os.symlink.assert_called_with(virtualenv, env['path'])
 
     def test_create_virtualenv_child(self):
         """ Creating a non-dependency env with a parent should symlink """
-        conf = {'parent': 'parentrepo',
-                'env': {
-                    'path': 'childenv',
-                    'args': [],
-                }}
+        env = {
+            'path': 'childenv',
+            'args': [],
+        }
         parent_conf = {'env': {'path': 'venv'}}
         self.existing.add('../parentrepo')
         self.existing.add('../parentrepo/venv')
         patch.object(unbox, 'load_conf', lambda _: parent_conf).start()
-        unbox.create_virtualenv(conf, 'testrepo', 'virtualenv', None, False)
-        os.symlink.assert_called_with('../parentrepo/venv',
-                                      conf['env']['path'])
+        unbox.create_virtualenv(env, 'virtualenv', None, 'parentrepo')
+        os.symlink.assert_called_with('../parentrepo/venv', env['path'])
+
+    def test_create_virtualenv_child_no_env(self):
+        """ Child virtualenv should make env if parent env is missing """
+        env = {
+            'path': 'venv',
+            'args': [],
+        }
+        unbox.create_virtualenv(env, 'virtualenv', None, 'nonexistent_parent')
+
+        subprocess.check_call.assert_called_with(['virtualenv', env['path']])
 
 
 class UtilTest(TestCase):
 
     """ Test utility functions """
+
     def setUp(self):
         super(UtilTest, self).setUp()
         self.tmp = tempfile.mktemp()
