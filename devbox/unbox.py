@@ -137,7 +137,8 @@ def post_setup(conf, dest):
             kwargs = {}
             if conf.get('env', {}).get('path') is not None:
                 kwargs['env'] = {
-                    'PATH': os.path.join(conf['env']['path'], 'bin')
+                    'PATH': os.path.join(os.path.curdir, conf['env']['path'],
+                                         'bin') + ':' + os.environ['PATH']
                 }
             subprocess.check_call(command, **kwargs)
 
