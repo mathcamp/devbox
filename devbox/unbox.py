@@ -210,7 +210,8 @@ def main():
 
     args = vars(parser.parse_args())
 
-    unbox(args['repo'], args['dest'], args['v'], None, False, args['--no-deps'])
+    unbox(args['repo'], args['dest'], args['virtualenv'], None, False,
+          args['no_deps'])
 
 
 if __name__ == '__main__':
