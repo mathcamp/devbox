@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 
 
-CONF_FILE = '.gitbox.conf'
+CONF_FILE = '.devbox.conf'
 
 
 def convert_command(cmd):

@@ -15,7 +15,7 @@ REQUIREMENTS = [
 
 if __name__ == "__main__":
     setup(
-        name='gitbox',
+        name='devbox',
         description='Quickly set up python repos for development',
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
@@ -27,15 +27,15 @@ if __name__ == "__main__":
         license='MIT',
         author='Steven Arcangeli',
         author_email='steven@highlig.ht',
-        url='http://github.com/mathcamp/gitbox',
+        url='http://github.com/mathcamp/devbox',
         zip_safe=False,
         include_package_data=True,
         packages=find_packages(),
         entry_points={
             'console_scripts': [
-                'gitbox-pre-commit = gitbox.hook:precommit',
-                'gitbox-create = gitbox:create',
-                'gitbox-unbox = gitbox.unbox:main',
+                'devbox-pre-commit = devbox.hook:precommit',
+                'devbox-create = devbox:create',
+                'devbox-unbox = devbox.unbox:main',
             ],
         },
         setup_requires=[

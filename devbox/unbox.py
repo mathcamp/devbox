@@ -3,7 +3,7 @@
 Clone and set up a developer repository
 
 This file was carefully constructed to have no dependencies on other files in
-the ``gitbox`` package. This allows it to be downloaded separately and run
+the ``devbox`` package. This allows it to be downloaded separately and run
 directly as a script to perform the "unbox" operation.
 
 """
@@ -18,12 +18,12 @@ import shutil
 import subprocess
 
 
-CONF_FILE = '.gitbox.conf'
+CONF_FILE = '.devbox.conf'
 HOME = os.environ['HOME']
 
 
 def load_conf(directory=os.curdir):
-    """ Load the gitbox conf file """
+    """ Load the devbox conf file """
     filename = os.path.join(directory, CONF_FILE)
     if os.path.exists(filename):
         with open(filename, 'r') as infile:
@@ -89,7 +89,7 @@ def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
     Parameters
     ----------
     conf : dict
-        The gitbox conf data
+        The devbox conf data
     dest : str
         The name of the repository to create the virtualenv for
     virtualenv_cmd : str
@@ -105,8 +105,6 @@ def create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep):
         The path to this
 
     """
-    if not conf.get('env'):
-        return
     with pushd(dest):
         # If installing as a dependency, link to prior virtualenv
         if parent_virtualenv is not None \
@@ -158,7 +156,7 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
         The path to the virtualenv binary
     parent_virtualenv : str or None
         Path to the virtualenv to use for the installation. None will use the
-        settings inside gitbox.conf
+        settings inside the devbox conf file
     is_dep : bool
         True if this repo is being installed as a dependency for another boxed
         repo
@@ -181,9 +179,11 @@ def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
     conf = load_conf(dest)
     pre_setup(conf, dest)
     setup_git_hooks(dest)
-    create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv, is_dep)
+    if conf.get('env'):
+        create_virtualenv(conf, dest, virtualenv_cmd, parent_virtualenv,
+                          is_dep)
 
-    # Install other gitbox repos, if any
+    # Install other devbox repos, if any
     if conf.get('env'):
         virtualenv = os.path.join(os.path.pardir, dest, conf['env']['path'])
     else:
@@ -201,9 +201,13 @@ def main():
     parser.add_argument('repo', help="Git url or file path of the repository "
                         "to unbox")
     parser.add_argument('dest', nargs='?', help="Directory to clone into")
-    parser.add_argument('-v', help="Virtualenv binary", default='virtualenv')
     parser.add_argument('--no-deps', action='store_true',
                         help="Do not clone and set up the dependencies")
+
+    group = parser.add_argument_group('python')
+    group.add_argument('--virtualenv', help="Virtualenv binary",
+                       default='virtualenv')
+
     args = vars(parser.parse_args())
 
     unbox(args['repo'], args['dest'], args['v'], None, False, args['--no-deps'])

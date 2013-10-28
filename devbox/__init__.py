@@ -82,7 +82,7 @@ def copy_static(name, dest):
 
 
 def configure(repo, language_config=None):
-    """ Set up a repository with gitbox """
+    """ Set up a repository with devbox """
     if not os.path.exists(repo):
         os.makedirs(repo)
 
@@ -95,7 +95,7 @@ def configure(repo, language_config=None):
     pre_commit = []
 
     standalone = promptyn("If standalone mode is disabled, your pre-commit "
-                          "hooks will require gitbox to be "
+                          "hooks will require devbox to be "
                           "installed\nStandalone mode?", True)
 
     if promptyn("Prohibit trailing whitespace?", True):
@@ -121,9 +121,9 @@ def configure(repo, language_config=None):
     else:
         if 'env' in conf:
             hook_cmd = os.path.join(conf['env']['path'], 'bin',
-                                    'gitbox-pre-commit')
+                                    'devbox-pre-commit')
         else:
-            hook_cmd = 'gitbox-pre-commit'
+            hook_cmd = 'devbox-pre-commit'
 
     if 'env' in conf and not os.path.isabs(conf['env']['path']):
         hook_cmd = os.path.join('.', hook_cmd)
@@ -161,14 +161,12 @@ def configure_python(repo, conf):
     install_pylintrc = False
     install_pep8 = False
     if promptyn("Run pylint on commit?", True):
-        conf['hooks_modified']['*.py'].append(['pylint',
-                                               '--rcfile=.pylintrc'])
+        conf['hooks_modified']['*.py'].append(['pylint', '--rcfile=.pylintrc'])
         requirements.append('pylint')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
-        conf['hooks_modified']['*.py'].append(['pep8',
-                                               '--config=.pep8.ini'])
+        conf['hooks_modified']['*.py'].append(['pep8', '--config=.pep8.ini'])
         install_pep8 = True
         requirements.append('pep8')
 
@@ -192,8 +190,7 @@ def configure_python(repo, conf):
                os.path.join(repo, 'MANIFEST.in'))
 
     if promptyn("Pylint entire package on commit? (slooooow)", False):
-        conf['hooks_all'].append(['pylint', '--rcfile=.pylintrc',
-                                  repo])
+        conf['hooks_all'].append(['pylint', '--rcfile=.pylintrc', repo])
         install_pylintrc = True
 
     # Write the required packages to a requirements file
