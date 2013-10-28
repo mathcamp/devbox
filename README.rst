@@ -64,11 +64,11 @@ Format of Devbox conf
         after setup_commands)
     post_setup : list
         List of commands to run after any dependencies have been handled.
-    hooks_modified : dict
-        Keys are glob patterns. Values are lists of commands. During the
-        pre-commit hook, for each modified file that matches the glob, all
-        commands for that glob are run with the file name passed in as the last
-        argument.  (ex. {"*.py": ["pylint --rcfile=.pylintrc"]} )
+    hooks_modified : list
+        A list of (pattern, command) pairs. The pattern is a glob that will
+        match modified files. During the pre-commit hooks, each modified file
+        that matches the pattern will be passed as an argument to the command.
+        (ex. [["*.py", "pylint --rcfile=.pylintrc"], ["*.js", "jsl"]])
     hooks_all : list
         List of commands to run during the pre-commit hook. The advantage of
         using this instead of putting the command directly in 'pre-commit' is
