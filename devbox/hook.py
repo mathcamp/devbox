@@ -23,7 +23,7 @@ CONF_FILE = '.devbox.conf'
 
 def convert_command(cmd):
     """ If a command is a string, convert it to list form for subprocess """
-    if isinstance(cmd, basestring):
+    if not isinstance(cmd, list):
         return shlex.split(cmd)
     return cmd
 
@@ -63,12 +63,12 @@ def run_checks(conf, tmpdir):
                 output, _ = proc.communicate()
                 if proc.returncode != 0:
                     if not printed_filename:
-                        print filename
-                        print '=' * len(filename)
+                        print(filename)
+                        print('=' * len(filename))
                         printed_filename = True
-                    print command[0]
-                    print '-' * len(command[0])
-                    print output
+                    print(command[0])
+                    print('-' * len(command[0]))
+                    print(output)
                     retcode |= proc.returncode
 
         for command in conf.get('hooks_all', []):

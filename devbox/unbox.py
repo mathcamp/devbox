@@ -55,7 +55,7 @@ def repo_name_from_url(url):
 def pre_setup(conf):
     """ Run any pre-setup scripts """
     for command in conf.get('pre_setup', []):
-        if isinstance(command, basestring):
+        if not isinstance(command, list):
             command = shlex.split(command)
         subprocess.check_call(command)
 
@@ -64,14 +64,14 @@ def setup_git_hooks():
     """ Set up a symlink to the git hooks directory """
     # Symlink to git hooks
     if os.path.exists('git_hooks') and not os.path.islink('.git/hooks'):
-        print "Installing git hooks"
+        print("Installing git hooks")
         shutil.rmtree('.git/hooks')
         os.symlink('../git_hooks', '.git/hooks')
 
 
 def update_repo(repo):
     """ Make sure the repository is up-to-date """
-    print "Updating", repo
+    print("Updating", repo)
     # Update the repo safely (don't discard changes)
     subprocess.call(['git', 'pull', '--ff-only'])
     # Update any submodules
@@ -117,7 +117,7 @@ def create_virtualenv(env, venv_bin, venv, parent):
 
     # Otherwise, create a new virtualenv
     if not os.path.exists(env['path']):
-        print "Creating virtualenv"
+        print("Creating virtualenv")
         cmd = ([venv_bin] + env['args'] +
                [env['path']])
         subprocess.check_call(cmd)
@@ -128,7 +128,7 @@ def create_virtualenv(env, venv_bin, venv, parent):
 def post_setup(conf):
     """ Run any post-setup scripts """
     for command in conf.get('post_setup', []):
-        if isinstance(command, basestring):
+        if not isinstance(command, list):
             command = shlex.split(command)
         kwargs = {}
         if conf.get('env', {}).get('path') is not None:
@@ -165,7 +165,7 @@ def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
             dest = repo_name_from_url(repo)
 
     if not os.path.exists(dest):
-        print "Cloning", repo
+        print("Cloning", repo)
         subprocess.check_call(['git', 'clone', repo, dest])
 
     with pushd(dest):

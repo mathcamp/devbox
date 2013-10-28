@@ -10,9 +10,16 @@ from collections import defaultdict
 from .unbox import load_conf, CONF_FILE
 
 
+# To make it work on python 2 and 3
+try:
+    input = raw_input  # pylint: disable=C0103
+except NameError:
+    pass
+
+
 def prompt(msg, default=None, arg_type=str):
     """ Prompt the user for input """
-    value = raw_input(msg + ' ')
+    value = input(msg + ' ')
     if not value.strip():
         return default
     return arg_type(value)
@@ -26,7 +33,7 @@ def promptyn(msg, default=None):
             no = "n"
         else:
             no = "N"
-        confirm = raw_input("%s [%s/%s] " % (msg, yes, no))
+        confirm = input("%s [%s/%s] " % (msg, yes, no))
         confirm = confirm.lower().strip()
         if confirm == "y" or confirm == "yes":
             return True
@@ -244,7 +251,7 @@ def create():
     parser = argparse.ArgumentParser(description=create.__doc__)
     parser.add_argument('repo', help="Location of the repository to box")
     parser.add_argument('-l', default='auto', help="Language (default "
-                        "%(default)s)", choices=LANGUAGE_MAP.keys())
+                        "%(default)s)", choices=list(LANGUAGE_MAP.keys()))
     args = vars(parser.parse_args())
     try:
         if args['l'] == 'auto':
@@ -254,4 +261,4 @@ def create():
                 args['l'] = 'none'
         configure(args['repo'], LANGUAGE_MAP[args['l']])
     except KeyboardInterrupt:
-        print
+        print()

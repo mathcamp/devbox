@@ -17,6 +17,7 @@ recognize that it is not longer being run from within a git repository and find
 the version number from the file it generated earlier.
 
 """
+import locale
 import os
 import re
 
@@ -94,7 +95,7 @@ def write_constants(filename, **constants):
     with open(filename, 'w') as outfile:
         outfile.write('""" This file is auto-generated during the '
                       'package-building process """%s' % os.linesep)
-        for key, value in constants.iteritems():
+        for key, value in constants.items():
             outfile.write("__%s__ = '%s'%s" % (key, value, os.linesep))
 
 
@@ -133,13 +134,15 @@ def git_describe(describe_args):
         If there is an error running ``git describe``
 
     """
+    encoding = locale.getdefaultlocale()[1]
     try:
-        description = subprocess.check_output(GIT_DESCRIBE +
-                                              describe_args).strip()
+        description = (subprocess.check_output(GIT_DESCRIBE + describe_args)
+                       .decode(encoding)
+                       .strip())
     except subprocess.CalledProcessError as e:
         print("Error parsing git revision! Make sure that you have tagged a "
               "commit, and that the tag matches the 'tag_match' argument")
-        print e.output
+        print(e.output)
         raise
     components = description.split('-')
     # trim off the dirty suffix
