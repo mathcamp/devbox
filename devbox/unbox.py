@@ -58,7 +58,7 @@ def pre_setup(conf, dest):
         for command in conf.get('pre_setup', []):
             if isinstance(command, basestring):
                 command = shlex.split(command)
-            subprocess.Popen(command)
+            subprocess.check_call(command)
 
 
 def setup_git_hooks(dest):
@@ -139,7 +139,7 @@ def post_setup(conf, dest):
                 kwargs['env'] = {
                     'PATH': os.path.join(conf['env']['path'], 'bin')
                 }
-            subprocess.Popen(command, **kwargs)
+            subprocess.check_call(command, **kwargs)
 
 
 def unbox(repo, dest, virtualenv_cmd, parent_virtualenv, is_dep, setup_deps):
