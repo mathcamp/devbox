@@ -20,6 +20,7 @@ if __name__ == "__main__":
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
             'Programming Language :: Python',
+            'Programming Language :: Python :: 3',
             'Development Status :: 4 - Beta',
             'Intended Audience :: Developers',
             'License :: OSI Approved :: MIT License',
