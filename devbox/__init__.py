@@ -64,12 +64,11 @@ def remove_duplicate_commands(commands):
     seen = set()
     index = 0
     while index < len(commands):
-        if not isinstance(commands[index], basestring):
-            command = ' '.join(commands[index])
-        if command in seen:
+        str_command = json.dumps(commands[index])
+        if str_command in seen:
             del commands[index]
             continue
-        seen.add(command)
+        seen.add(str_command)
         index += 1
 
 
@@ -91,7 +90,7 @@ def configure(repo, language_config=None):
     conf.setdefault('pre_setup', [])
     conf.setdefault('post_setup', [])
     conf.setdefault('hooks_all', [])
-    conf.setdefault('hooks_modified', {})
+    conf.setdefault('hooks_modified', [])
     pre_commit = []
 
     standalone = promptyn("If standalone mode is disabled, your pre-commit "
@@ -139,8 +138,7 @@ def configure(repo, language_config=None):
 
     # Remove duplicates from commands
     remove_duplicate_commands(conf['hooks_all'])
-    for commands in conf['hooks_modified'].values():
-        remove_duplicate_commands(commands)
+    remove_duplicate_commands(conf['hooks_modified'])
     conf_file = os.path.join(repo, CONF_FILE)
     with open(conf_file, 'w') as outfile:
         json.dump(conf, outfile)
@@ -148,7 +146,6 @@ def configure(repo, language_config=None):
 
 def configure_python(repo, conf):
     """ Add some default python options to the repository """
-    conf['hooks_modified'].setdefault('*.py', [])
     env = prompt("Path of virtualenv (relative to repository root)? "
                  "[venv]", 'venv')
     conf['env'] = {
@@ -161,17 +158,19 @@ def configure_python(repo, conf):
     install_pylintrc = False
     install_pep8 = False
     if promptyn("Run pylint on commit?", True):
-        conf['hooks_modified']['*.py'].append(['pylint', '--rcfile=.pylintrc'])
+        command = "pylint --rcfile=.pylintrc"
+        conf['hooks_modified'].append(['*.py', ['pylint',
+                                                '--rcfile=.pylintrc']])
         requirements.append('pylint')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
-        conf['hooks_modified']['*.py'].append(['pep8', '--config=.pep8.ini'])
+        conf['hooks_modified'].append(['*.py', ['pep8', '--config=.pep8.ini']])
         install_pep8 = True
         requirements.append('pep8')
 
     if promptyn("Run pyflakes on commit?", False):
-        conf['hooks_modified']['*.py'].append(['pyflakes'])
+        conf['hooks_modified'].append(['*.py', ['pyflakes']])
         requirements.append('pyflakes')
 
     if promptyn("Add autoPEP8 command?", True):
@@ -190,7 +189,9 @@ def configure_python(repo, conf):
                os.path.join(repo, 'MANIFEST.in'))
 
     if promptyn("Pylint entire package on commit? (slooooow)", False):
-        conf['hooks_all'].append(['pylint', '--rcfile=.pylintrc', repo])
+        command = "pylint --rcfile=.pylintrc %s" % repo
+        if command not in conf['hooks_all']:
+            conf['hooks_all'].append(command)
         install_pylintrc = True
 
     # Write the required packages to a requirements file
