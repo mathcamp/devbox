@@ -1,4 +1,4 @@
-pylint==0.28.0
+pylint
 pep8
 autopep8
 coverage

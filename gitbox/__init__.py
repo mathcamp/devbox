@@ -163,7 +163,7 @@ def configure_python(repo, conf):
     if promptyn("Run pylint on commit?", True):
         conf['hooks_modified']['*.py'].append(['pylint',
                                                '--rcfile=.pylintrc'])
-        requirements.append('pylint==0.28.0')
+        requirements.append('pylint')
         install_pylintrc = True
 
     if promptyn("Run PEP8 on commit?", True):
