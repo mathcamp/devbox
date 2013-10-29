@@ -13,6 +13,12 @@ REQUIREMENTS = [
     'mock',
 ]
 
+# Python 2.6 doesn't ship with argparse
+try:
+    import argparse
+except ImportError:
+    REQUIREMENTS.append('argparse')
+
 if __name__ == "__main__":
     setup(
         name='devbox',
