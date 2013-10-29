@@ -1,6 +1,7 @@
 Devbox
 ======
-.. image:: https://travis-ci.org/mathcamp/devbox.png?branch=master   :target: https://travis-ci.org/mathcamp/devbox
+.. image:: https://travis-ci.org/mathcamp/devbox.png?branch=master
+  :target: https://travis-ci.org/mathcamp/devbox
 .. image:: https://coveralls.io/repos/mathcamp/devbox/badge.png
   :target: https://coveralls.io/r/mathcamp/devbox
 
