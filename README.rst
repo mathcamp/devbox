@@ -1,3 +1,5 @@
+.. image:: https://travis-ci.org/mathcamp/devbox.png?branch=master   :target: https://travis-ci.org/mathcamp/devbox
+
 Devbox
 ======
 This is a tool for quickly setting up repositories for development. It was
