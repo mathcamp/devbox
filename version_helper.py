@@ -135,15 +135,17 @@ def git_describe(describe_args):
 
     """
     encoding = locale.getdefaultlocale()[1] or 'utf-8'
-    try:
-        description = (subprocess.check_output(GIT_DESCRIBE + describe_args)
-                       .decode(encoding)
-                       .strip())
-    except subprocess.CalledProcessError as e:
+    proc = subprocess.Popen(GIT_DESCRIBE + describe_args,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    output, _ = proc.communicate()
+    description = output.decode(encoding).strip()
+    if proc.returncode != 0:
         print("Error parsing git revision! Make sure that you have tagged a "
               "commit, and that the tag matches the 'tag_match' argument")
-        print(e.output)
-        raise
+        print(output)
+        raise ValueError("Could not describe git version")
+
     components = description.split('-')
     # trim off the dirty suffix
     dirty_suffix = '-dirty'
