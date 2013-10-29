@@ -6,3 +6,4 @@ dist
 _version.py
 venv
 .tox
+.coverage

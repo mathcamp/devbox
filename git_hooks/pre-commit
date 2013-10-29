@@ -1,3 +1,4 @@
 #!/bin/bash -e
+pip install -e . > /dev/null
 git diff-index --check --cached HEAD --
 ./venv/bin/devbox-pre-commit
