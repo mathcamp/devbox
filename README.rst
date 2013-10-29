@@ -1,9 +1,9 @@
+Devbox
+======
 .. image:: https://travis-ci.org/mathcamp/devbox.png?branch=master   :target: https://travis-ci.org/mathcamp/devbox
 .. image:: https://coveralls.io/repos/mathcamp/devbox/badge.png
   :target: https://coveralls.io/r/mathcamp/devbox
 
-Devbox
-======
 This is a tool for quickly setting up repositories for development. It was
 created specifically for python projects, but has some features that should be
 universally useful.
