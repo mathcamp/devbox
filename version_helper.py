@@ -1,9 +1,11 @@
 """
 Helper file to generate package version numbers on the fly
 
-Wouldn't it be great if every time you bundled a python package, it was tagged
-with a unique version number that reflected the current git ref? It's almost
-like that's a feature that should be available without stupid hacks.
+You're probably already using git tags to tag releases of your project. If you
+aren't, you really should. Wouldn't it be great if your python package
+automatically updated its version number based on the most recent git tag? You
+know, so you don't have to do it manually all the time? It's almost like
+that's a feature that should be available without stupid hacks.
 
 But it's not. So here's how the stupid hacks work.
 
@@ -13,8 +15,27 @@ auto-generated file in your package. By default the file is named
 '_version.py', and you should add it to your ``.gitignore``. Since this is a
 python file and it's in your package, it will get bundled up and distributed
 with your package. Then during the installation process, this script will
-recognize that it is not longer being run from within a git repository and find
+recognize that it is no longer being run from within a git repository and find
 the version number from the file it generated earlier.
+
+To use version_helper, first tag a release commit in your repository::
+
+    git tag 0.1.0
+
+Then add the following to your setup.py file::
+
+    from setuptools import setup
+    from version_helper import git_version
+
+    setup(
+        name='mypackage',
+        ...
+        **git_version())
+
+You're done! That's it! To view the auto-generated version number of your
+package, run::
+
+    python setup.py -V
 
 """
 import locale
@@ -76,7 +97,7 @@ def parse_constants(filename):
     if not os.path.exists(filename):
         return {
             'source_label': 'NOTAG',
-            'version': '0.0.0',
+            'version': 'unknown',
         }
     constants = {}
     with open(filename, 'r') as infile:
