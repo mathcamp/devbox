@@ -1,4 +1,5 @@
 #!/bin/bash -e
+# Re-install the package if it's been screwed up by tox
 pip install -e . > /dev/null
 git diff-index --check --cached HEAD --
 ./venv/bin/devbox-pre-commit

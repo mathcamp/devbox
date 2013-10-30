@@ -21,59 +21,59 @@ import tempfile
 CONF_FILE = '.devbox.conf'
 
 
-def convert_command(cmd):
-    """ If a command is a string, convert it to list form for subprocess """
-    if not isinstance(cmd, list):
-        return shlex.split(cmd)
-    return cmd
-
-
 @contextlib.contextmanager
 def pushd(directory):
     """ CD into the directory inside a 'with' block """
-    curdir = os.getcwd()
+    prevdir = os.getcwd()
     os.chdir(directory)
     try:
-        yield
+        yield prevdir
     finally:
-        os.chdir(curdir)
+        os.chdir(prevdir)
 
 
-def run_checks(conf, tmpdir):
+def check_output(cmd):
+    """ Because python 2.6 doesn't have subprocess.check_output """
+    if hasattr(subprocess, 'check_output'):
+        return subprocess.check_output(cmd)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    output, _ = proc.communicate()
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd,
+                                            output)
+    return output
+
+
+def run_checks(hooks_all, hooks_modified, modified, path):
     """ Run selected checks on the current git index """
-    modified = subprocess.check_output(['git', 'diff', '--cached',
-                                        '--name-only', '--diff-filter=ACMRT'])
-    modified = [name.strip() for name in modified.splitlines()]
     retcode = 0
-    path = os.environ['PATH']
-    if 'env' in conf:
-        binpath = os.path.join(os.path.abspath(conf['env']['path']), 'bin')
-        path = binpath + ':' + path
-    with pushd(tmpdir):
-        for pattern, command in conf.get('hooks_modified', []):
-            command = convert_command(command)
-            for filename in modified:
-                if not fnmatch.fnmatch(filename, pattern):
-                    continue
-                printed_filename = False
-                proc = subprocess.Popen(command + [filename],
-                                        env={'PATH': path},
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT)
-                output, _ = proc.communicate()
-                if proc.returncode != 0:
-                    if not printed_filename:
-                        print(filename)
-                        print('=' * len(filename))
-                        printed_filename = True
-                    print(command[0])
-                    print('-' * len(command[0]))
-                    print(output)
-                    retcode |= proc.returncode
+    for command in hooks_all:
+        if not isinstance(command, list):
+            command = shlex.split(command)
+        retcode |= subprocess.call(command, env={'PATH': path})
 
-        for command in conf.get('hooks_all', []):
-            command = convert_command(command)
-            retcode |= subprocess.call(command)
+    for pattern, command in hooks_modified:
+        if not isinstance(command, list):
+            command = shlex.split(command)
+        for filename in modified:
+            if not fnmatch.fnmatch(filename, pattern):
+                continue
+            printed_filename = False
+            proc = subprocess.Popen(command + [filename],
+                                    env={'PATH': path},
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+            output, _ = proc.communicate()
+            if proc.returncode != 0:
+                if not printed_filename:
+                    print(filename)
+                    print('=' * len(filename))
+                    printed_filename = True
+                print(command[0])
+                print('-' * len(command[0]))
+                print(output)
+                retcode |= proc.returncode
 
     return retcode
 
@@ -87,23 +87,55 @@ def load_conf():
         return {}
 
 
+def copy_index(tmpdir):
+    """ Copy the git repo's index into a temporary directory """
+    # Put the code being checked-in into the temp dir
+    subprocess.check_call(['git', 'checkout-index', '-a', '-f', '--prefix=%s/'
+                           % tmpdir])
+
+    # Go to each recursive submodule and us a 'git archive' tarpipe to copy the
+    # correct ref into the temporary directory
+    output = check_output(['git', 'submodule', 'status', '--recursive',
+                           '--cached'])
+    for line in output.splitlines():
+        ref, path, _ = line.split()
+        ref = ref.strip('+')
+        with pushd(path):
+            archive = subprocess.Popen(['git', 'archive', '--format=tar', ref],
+                                       stdout=subprocess.PIPE)
+            untar_cmd = ['tar', '-x', '-C', '%s/%s/' % (tmpdir, path)]
+            untar = subprocess.Popen(untar_cmd, stdin=archive.stdout,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT)
+            out, _ = untar.communicate()
+            if untar.returncode != 0:
+                raise subprocess.CalledProcessError(untar.returncode,
+                                                    untar_cmd, out)
+
+
 def precommit(exit=True):
     """ Run all the pre-commit checks """
     tmpdir = tempfile.mkdtemp()
 
     try:
-        # Put the code being checked-in into the temp dir
-        subprocess.check_call(['git', 'checkout-index', '-a', '--prefix=%s/' %
-                              tmpdir, '--'])
-        submodule_output = subprocess.check_output(['git', 'submodule'])
-        # TODO: Use git clone on the submodules as well
-        for line in submodule_output.splitlines():
-            sub_parts = line.split()
-            if len(sub_parts) > 0:
-                target = os.path.join(tmpdir, sub_parts[1])
-                os.rmdir(target)
-                shutil.copytree(sub_parts[1], target)
-        retcode = run_checks(load_conf(), tmpdir)
+        copy_index(tmpdir)
+
+        modified = check_output(['git', 'diff', '--cached', '--name-only',
+                                 '--diff-filter=ACMRT'])
+        modified = [name.strip() for name in modified.splitlines()]
+        path = os.environ['PATH']
+        with pushd(tmpdir) as prevdir:
+            conf = load_conf()
+            if 'env' in conf:
+                binpath = os.path.abspath(os.path.join(prevdir,
+                                                       conf['env']['path'],
+                                                       'bin'))
+                if binpath not in path.split(':'):
+                    path = binpath + ':' + path
+            retcode = run_checks(conf.get('hooks_all', []),
+                                 conf.get('hooks_modified', []), modified,
+                                 path)
+
         if exit:
             sys.exit(retcode)
         else:
