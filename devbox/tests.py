@@ -15,6 +15,7 @@ from . import unbox, append
 class FakeFSTest(TestCase):
 
     """ Base test case that stubs out filesystem commands """
+
     def setUp(self):
         super(FakeFSTest, self).setUp()
         self.curdir = '/home/testuser'
@@ -100,6 +101,7 @@ class CreateVenvTest(FakeFSTest):
 class UnboxTest(FakeFSTest):
 
     """ Test the unbox command """
+
     def setUp(self):
         super(UnboxTest, self).setUp()
         patch.object(unbox, 'load_conf').start()
@@ -131,8 +133,8 @@ class UnboxTest(FakeFSTest):
         repo = 'git@github.com:user/repository'
         self._add_path('repository')
         unbox.main([repo])
-        self.assertNotIn(call(['git', 'clone', repo, 'repository']),
-                         subprocess.check_call.call_args_list)
+        self.assertTrue(call(['git', 'clone', repo, 'repository']) not in
+                        subprocess.check_call.call_args_list)
 
     def test_clone_correct_dest(self):
         """ Calculate the 'dest' properly from repo urls ending with '.git' """
@@ -148,10 +150,10 @@ class UnboxTest(FakeFSTest):
             'pre_setup': ['command one', 'command --two'],
         })
         unbox.main([repo])
-        self.assertIn(call(['command', 'one']),
-                      subprocess.check_call.call_args_list)
-        self.assertIn(call(['command', '--two']),
-                      subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', 'one']) in
+                        subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', '--two']) in
+                        subprocess.check_call.call_args_list)
 
     def test_run_post_setup(self):
         """ Unboxing runs the post_setup commands """
@@ -160,10 +162,10 @@ class UnboxTest(FakeFSTest):
             'post_setup': ['command one', 'command --two'],
         })
         unbox.main([repo])
-        self.assertIn(call(['command', 'one']),
-                      subprocess.check_call.call_args_list)
-        self.assertIn(call(['command', '--two']),
-                      subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', 'one']) in
+                        subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', '--two']) in
+                        subprocess.check_call.call_args_list)
 
     def test_run_post_setup_venv(self):
         """ Unboxing runs the post_setup commands with virtualenv path """
@@ -178,10 +180,10 @@ class UnboxTest(FakeFSTest):
         })
         unbox.main([repo])
         path = envpath + '/bin' + ':' + os.environ['PATH']
-        self.assertIn(call(['command', 'one'], env={'PATH': path}),
-                      subprocess.check_call.call_args_list)
-        self.assertIn(call(['command', '--two'], env={'PATH': path}),
-                      subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', 'one'], env={'PATH': path}) in
+                        subprocess.check_call.call_args_list)
+        self.assertTrue(call(['command', '--two'], env={'PATH': path}) in
+                        subprocess.check_call.call_args_list)
 
     def test_create_virtualenv(self):
         """ If 'env' is in conf, run create_virtualenv """
@@ -215,8 +217,8 @@ class UnboxTest(FakeFSTest):
             'dependencies': [nextrepo],
         })
         unbox.main([repo, '--no-deps'])
-        self.assertNotIn(call(['git', 'clone', nextrepo, 'nextrepo']),
-                         subprocess.check_call.call_args_list)
+        self.assertTrue(call(['git', 'clone', nextrepo, 'nextrepo']) not in
+                        subprocess.check_call.call_args_list)
 
 
 class UtilTest(TestCase):
