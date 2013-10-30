@@ -50,5 +50,6 @@ if __name__ == "__main__":
         ],
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS,
+        test_suite='devbox.tests',
         **git_version()
     )

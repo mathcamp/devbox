@@ -2,44 +2,10 @@
 import os
 import stat
 
-import argparse
 import json
 import shutil
 
 from .unbox import load_conf, CONF_FILE
-
-
-# To make it work on python 2 and 3
-try:
-    input = raw_input  # pylint: disable=C0103
-except NameError:
-    pass
-
-
-def prompt(msg, default=None, arg_type=str):
-    """ Prompt the user for input """
-    value = input(msg + ' ')
-    if not value.strip():
-        return default
-    return arg_type(value)
-
-
-def promptyn(msg, default=None):
-    """ Display a blocking prompt until the user confirms """
-    while True:
-        yes = "Y" if default else "y"
-        if default or default is None:
-            no = "n"
-        else:
-            no = "N"
-        confirm = input("%s [%s/%s] " % (msg, yes, no))
-        confirm = confirm.lower().strip()
-        if confirm == "y" or confirm == "yes":
-            return True
-        elif confirm == "n" or confirm == "no":
-            return False
-        elif len(confirm) == 0 and default is not None:
-            return default
 
 
 def append(lines, filename):
@@ -81,37 +47,34 @@ def remove_duplicate_commands(commands):
 def copy_static(name, dest):
     """ Copy one of the static files to a destination """
     destfile = os.path.join(dest, name)
-    if not os.path.exists(destfile):
-        srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
-        shutil.copyfile(srcfile, destfile)
+    srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
+    shutil.copyfile(srcfile, destfile)
+    return destfile
 
 
-def configure(repo, language_config=None):
+def base_setup(repo, standalone, template_setup=None):
     """ Set up a repository with devbox """
     if not os.path.exists(repo):
         os.makedirs(repo)
 
-    conf = load_conf(repo)
-    conf.setdefault('dependencies', [])
-    conf.setdefault('pre_setup', [])
-    conf.setdefault('post_setup', [])
-    conf.setdefault('hooks_all', [])
-    conf.setdefault('hooks_modified', [])
+    conf = {
+        'dependencies': [],
+        'pre_setup': [],
+        'post_setup': [],
+        'hooks_all': [],
+        'hooks_modified': [],
+    }
     pre_commit = []
 
-    standalone = promptyn("If standalone mode is disabled, your pre-commit "
-                          "hooks will require devbox to be "
-                          "installed\nStandalone mode?", True)
-
-    if promptyn("Prohibit trailing whitespace?", True):
-        pre_commit.append("git diff-index --check --cached HEAD --")
+    # Prohibit trailing whitespace
+    pre_commit.append("git diff-index --check --cached HEAD --")
 
     hookdir = os.path.join(repo, 'git_hooks')
     if not os.path.exists(hookdir):
         os.makedirs(hookdir)
 
-    if language_config is not None:
-        language_config(repo, conf)
+    if template_setup is not None:
+        template_setup(repo, conf)
 
     # Construct the proper pre-commit hook command
     if standalone:
@@ -127,6 +90,7 @@ def configure(repo, language_config=None):
         if 'env' in conf:
             hook_cmd = os.path.join(conf['env']['path'], 'bin',
                                     'devbox-pre-commit')
+            conf['post_setup'].append('pip install devbox')
         else:
             hook_cmd = 'devbox-pre-commit'
 
@@ -150,114 +114,88 @@ def configure(repo, language_config=None):
         json.dump(conf, outfile)
 
 
-def configure_python(repo, conf):
+def setup_python(repo, conf):
     """ Add some default python options to the repository """
-    env = prompt("Path of virtualenv (relative to repository root)? "
-                 "[venv]", 'venv')
     conf['env'] = {
-        'path': env,
+        'path': os.path.basename(os.path.abspath(repo)) + '_env',
         'args': [],
     }
-    autoenv = promptyn("Generate autoenv file?", True)
 
-    requirements = []
-    install_pylintrc = False
-    install_pep8 = False
-    if promptyn("Run pylint on commit?", True):
-        command = "pylint --rcfile=.pylintrc"
-        conf['hooks_modified'].append(['*.py', ['pylint',
-                                                '--rcfile=.pylintrc']])
-        requirements.append('pylint')
-        install_pylintrc = True
+    # Developers should install some analysis tools
+    requirements = [
+        'pylint',
+        'pep8',
+        'autopep8',
+    ]
+    append(requirements, os.path.join(repo, 'requirements_dev.txt'))
+    conf['post_setup'].append('pip install -r requirements_dev.txt')
+    conf['post_setup'].append('pip install -e .')
 
-    if promptyn("Run PEP8 on commit?", True):
-        conf['hooks_modified'].append(['*.py', ['pep8', '--config=.pep8.ini']])
-        install_pep8 = True
-        requirements.append('pep8')
+    # Run pylint and pep8 on modified python files
+    conf['hooks_modified'].extend([
+        ['*.py', ['pylint', '--rcfile=.pylintrc']],
+        ['*.py', ['pep8', '--config=.pep8.ini']],
+    ])
+    conf['hooks_all'].append('python setup.py test')
+    copy_static('.pylintrc', repo)
+    copy_static('.pep8.ini', repo)
 
-    if promptyn("Run pyflakes on commit?", False):
-        conf['hooks_modified'].append(['*.py', ['pyflakes']])
-        requirements.append('pyflakes')
+    # Add a script that runs autopep8 on repo
+    autopep8 = copy_static('run_autopep8.sh', repo)
+    st = os.stat(autopep8)
+    os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
 
-    if promptyn("Add autoPEP8 command?", True):
-        requirements.append('autopep8')
-        autopep8 = os.path.join(repo, 'run_autopep8.sh')
-        if not os.path.exists(autopep8):
-            copy_static('run_autopep8.sh', repo)
-            st = os.stat(autopep8)
-            os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
-
-    if promptyn("Include version_helper?", True):
-        version_helper = os.path.join(repo, 'version_helper.py')
-        if not os.path.exists(version_helper):
-            copy_static('version_helper.py', repo)
-        append(['include version_helper.py'],
-               os.path.join(repo, 'MANIFEST.in'))
-
-    if promptyn("Pylint entire package on commit? (slooooow)", False):
-        command = "pylint --rcfile=.pylintrc %s" % repo
-        if command not in conf['hooks_all']:
-            conf['hooks_all'].append(command)
-        install_pylintrc = True
-
-    # Write the required packages to a requirements file
-    if requirements:
-        append(requirements, os.path.join(repo, 'requirements_dev.txt'))
-        command = 'pip install -r requirements_dev.txt'
-        if command not in conf['post_setup']:
-            conf['post_setup'].append(command)
-
-    install_cmd = 'pip install -e .'
-    if install_cmd not in conf['post_setup']:
-        conf['post_setup'].append(install_cmd)
-
-    # Create the pylint & pep8 config files
-    if install_pylintrc or install_pep8:
-        pylintdir = os.path.join(repo, 'pylint')
-        if not os.path.exists(pylintdir):
-            os.makedirs(pylintdir)
-        if install_pylintrc:
-            copy_static('.pylintrc', repo)
-        if install_pep8:
-            copy_static('.pep8.ini', repo)
+    # Include the version_helper.py script
+    copy_static('version_helper.py', repo)
+    append(['include version_helper.py'],
+           os.path.join(repo, 'MANIFEST.in'))
 
     # Add the autoenv file to activate the virtualenv
-    if autoenv:
-        envfile = os.path.join(repo, '.env')
-        if not os.path.exists(envfile):
-            with open(envfile, 'w') as outfile:
-                if os.path.isabs(env):
-                    outfile.write(r'source ' + os.path.join(env, 'bin',
-                                                            'activate'))
-                else:
-                    outfile.write(r'_envdir=$(dirname "$1")')
-                    outfile.write('\n')
-                    outfile.write(r'source ' + os.path.join(r'$_envdir', env,
-                                                            'bin', 'activate'))
+    envfile = os.path.join(repo, '.env')
+    if not os.path.exists(envfile):
+        with open(envfile, 'w') as outfile:
+            outfile.write(r'_envdir=$(dirname "$1")')
+            outfile.write(os.linesep)
+            outfile.write(r'source ' + os.path.join(r'$_envdir',
+                                                    conf['env']['path'], 'bin',
+                                                    'activate'))
 
     # Write the virtualenv file to .gitignore
     append([conf['env']['path']], os.path.join(repo, '.gitignore'))
 
 
-LANGUAGE_MAP = {
-    'python': configure_python,
-    'none': None,
+TEMPLATES = {
+    'python': [setup_python, "Basic python template. Runs pylint, pep8, and "
+               "unit tests on commit. Creates a virtualenv & autoenv file. "
+               "Adds version_helper.py."],
+    'base': [None, "Bare-bones template that only provides the framework for "
+             "adding hooks and setup scripts."],
 }
 
 
 def create():
     """ Create box metadata files in a repository """
+    import sys
+    import argparse
     parser = argparse.ArgumentParser(description=create.__doc__)
     parser.add_argument('repo', help="Location of the repository to box")
-    parser.add_argument('-l', default='auto', help="Language (default "
-                        "%(default)s)", choices=list(LANGUAGE_MAP.keys()))
+    parser.add_argument('-t', default='base', help="Template (default "
+                        "%(default)s)", choices=list(TEMPLATES.keys()))
+    parser.add_argument('-s', '--standalone', action='store_true',
+                        help="Don't require devbox to be installed for the "
+                        "hooks to run")
+    parser.add_argument('-l', '--list-templates', action='store_true',
+                        help="List all available templates")
+
+    if '-l' in sys.argv or '--list-templates' in sys.argv:
+        longest_name = max([len(name) for name in TEMPLATES])
+        print("Devbox templates:")
+        for name, (_, desc) in TEMPLATES.items():
+            print("  %s  %s" % ((name + ':').ljust(longest_name + 1), desc))
+        return
+
     args = vars(parser.parse_args())
-    try:
-        if args['l'] == 'auto':
-            if os.path.exists(os.path.join(args['repo'], 'setup.py')):
-                args['l'] = 'python'
-            else:
-                args['l'] = 'none'
-        configure(args['repo'], LANGUAGE_MAP[args['l']])
-    except KeyboardInterrupt:
-        print()
+    # TODO: Until I upload this to pypi, always use standalone mode
+    args['s'] = True
+
+    base_setup(args['repo'], args['s'], TEMPLATES[args['t']][0])
