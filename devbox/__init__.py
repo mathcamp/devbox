@@ -5,7 +5,6 @@ import stat
 import argparse
 import json
 import shutil
-from collections import defaultdict
 
 from .unbox import load_conf, CONF_FILE
 

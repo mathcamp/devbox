@@ -188,8 +188,11 @@ def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
         post_setup(conf)
 
 
-def main():
+def main(args=None):
     """ Clone and set up a developer repository """
+    import sys
+    if args is None:
+        args = sys.argv[1:]
     parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument('repo', help="Git url or file path of the repository "
                         "to unbox")
@@ -205,7 +208,7 @@ def main():
                        "Will symlink to this virtualenv instead of creating "
                        "a new one.")
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
 
     unbox(**args)
 
