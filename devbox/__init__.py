@@ -5,7 +5,13 @@ import stat
 import json
 import shutil
 
-from .unbox import load_conf, CONF_FILE
+from .unbox import CONF_FILE
+
+
+try:
+    from ._version import __version__  # pylint: disable=F0401
+except ImportError:
+    __version__ = 'unknown'
 
 
 def append(lines, filename):
