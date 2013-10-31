@@ -12,8 +12,12 @@ universally useful.
 Create a Box
 ============
 First install devbox using pip. Then run ``devbox-create path/to/repository``.
-It will prompt you for some configuration options, then write out the data to
-several files. Commit the files and push.
+There are different templates which provide different base configurations for
+your repo. For more information run ``devbox-create -h``.
+
+After running the create command, your repository will have a bunch of new
+files that provide some default behavior. Alter them as you desire, then add
+and commit them.
 
 Unboxing
 ========
@@ -23,9 +27,8 @@ git@github.com:user/repo.git``. If devbox is not installed, run::
     wget https://raw.github.com/mathcamp/devbox/master/devbox/unbox.py && \
     python unbox.py git@github.com:user/repo.git
 
-The unbox command is idempotent, so you can run it multiple times with no
-problems. If you have already cloned the repository you want to unbox, just
-pass in the path to the repository like so::
+If you have already cloned the repository you want to unbox, just
+pass in the path to the repository and devbox will complete the setup::
 
     wget https://raw.github.com/mathcamp/devbox/master/devbox/unbox.py && \
     python unbox.py path/to/repo
@@ -94,3 +97,31 @@ Python-specific fields::
         the same level in your directory structure. If it exists, devbox
         will make a symbolic link to that virtualenv instead of constructing
         one for this repo.
+
+Pre-Commit in-depth
+===================
+There is a problem with naïve pre-commit hooks. To illustrate this, here is a trivial example.
+
+**Expected**:
+* modify files A and B, putting syntax error in B
+* git add A
+* git commit
+* git add B
+* git commit BLOCKED by pre-commit hook failure on B
+* fix and git add B
+* git commit
+* smiles all around
+
+**Actual**:
+* modify files A and B, putting syntax error in B
+* git add A
+* git commit BLOCKED by pre-commit hook failure on B
+* sadness
+
+This is a simple example, but it's very easy to do this to yourself frequently.
+There's a much worse variant where the hooks can pass even though you're
+committing a broken build. The ``hook.py`` file is designed to fix this and
+other issues.  It performs a git checkout-index into a temporary folder, copies
+over any git submodules, and then runs the hooks on those temporary files. This
+means that you have some guarantee that the code that's being checked is the
+code that will be committed.
