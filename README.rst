@@ -103,6 +103,7 @@ Pre-Commit in-depth
 There is a problem with naïve pre-commit hooks. To illustrate this, here is a trivial example.
 
 **Expected**:
+
 * modify files A and B, putting syntax error in B
 * git add A
 * git commit
@@ -113,6 +114,7 @@ There is a problem with naïve pre-commit hooks. To illustrate this, here is a t
 * smiles all around
 
 **Actual**:
+
 * modify files A and B, putting syntax error in B
 * git add A
 * git commit BLOCKED by pre-commit hook failure on B
