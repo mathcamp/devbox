@@ -37,6 +37,14 @@ package, run::
 
     python setup.py -V
 
+If you want to embed the version as __version__ (PEP 396), put the following
+lines into your package's __init__.py file::
+
+    try:
+        from ._version import *  # pylint: disable=F0401,W0401
+    except ImportError:
+        __version__ = 'unknown'
+
 """
 import locale
 import os

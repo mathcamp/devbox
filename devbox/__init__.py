@@ -9,7 +9,7 @@ from .unbox import CONF_FILE
 
 
 try:
-    from ._version import __version__  # pylint: disable=F0401
+    from ._version import *  # pylint: disable=F0401,W0401
 except ImportError:
     __version__ = 'unknown'
 
