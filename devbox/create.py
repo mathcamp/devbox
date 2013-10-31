@@ -105,8 +105,9 @@ def create_python(repo, conf):
     Creates a virtualenv & autoenv file.
 
     """
+    package = os.path.basename(os.path.abspath(repo))
     conf['env'] = {
-        'path': os.path.basename(os.path.abspath(repo)) + '_env',
+        'path': package + '_env',
         'args': [],
     }
 
@@ -115,6 +116,7 @@ def create_python(repo, conf):
         'pylint',
         'pep8',
         'autopep8',
+        'tox',
     ]
     append(requirements, os.path.join(repo, 'requirements_dev.txt'))
     conf['post_setup'].append('pip install -r requirements_dev.txt')
@@ -128,6 +130,23 @@ def create_python(repo, conf):
     conf['hooks_all'].append('python setup.py test')
     copy_static('.pylintrc', repo)
     copy_static('.pep8.ini', repo)
+
+    # Tox
+    with open(os.path.join(repo, 'tox.ini'), 'w') as outfile:
+        outfile.write("""[tox]
+envlist = py26, py27, py32, py33
+
+[testenv]
+commands =
+    {envpython} setup.py test
+
+[testenv:py27]
+deps = -rrequirements_dev.txt
+commands =
+    {envpython} setup.py test
+    pylint --rcfile=.pylintrc %s
+    pep8 --config=.pep8.ini %s
+""" % (package, package))
 
     # Add a script that runs autopep8 on repo
     autopep8 = copy_static('run_autopep8.sh', repo)
