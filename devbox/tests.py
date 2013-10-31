@@ -7,7 +7,7 @@ import tempfile
 from mock import patch, call, ANY, MagicMock
 from unittest import TestCase
 
-from . import unbox, append, hook
+from . import unbox, hook, create
 
 
 # pylint: disable=E1101
@@ -225,66 +225,6 @@ class UnboxTest(FakeFSTest):
                         subprocess.check_call.call_args_list)
 
 
-class UtilTest(TestCase):
-
-    """ Test utility functions """
-
-    def setUp(self):
-        super(UtilTest, self).setUp()
-        self.tmp = tempfile.mktemp()
-
-    def tearDown(self):
-        super(UtilTest, self).tearDown()
-        if os.path.exists(self.tmp):
-            os.unlink(self.tmp)
-
-    def test_append_new(self):
-        """ Appending lines to a new file adds those lines to the file """
-        lines = ['first line', 'another line']
-        append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_blank(self):
-        """ Appending lines to a file adds those lines to the file """
-        with open(self.tmp, 'w') as outfile:
-            outfile.write('')
-        lines = ['first line', 'another line']
-        append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_no_duplicates(self):
-        """ Appending lines to a file does not result in duplicate lines """
-        with open(self.tmp, 'w') as outfile:
-            outfile.write('first line\n')
-        lines = ['first line', 'another line']
-        append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_no_disturb(self):
-        """ Appending lines to a file ignores existing text """
-        text = 'pre-existing text\nThat will need to be ignored\n'
-        with open(self.tmp, 'w') as outfile:
-            outfile.write(text)
-        lines = ['first line', 'another line']
-        append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), text + '\n'.join(lines) + '\n')
-
-    def test_append_prepend_newline(self):
-        """ Appending lines to a file adds a leading newline if needed """
-        text = 'pre-existing text\nThat will need to be ignored'
-        with open(self.tmp, 'w') as outfile:
-            outfile.write(text)
-        lines = ['first line', 'another line']
-        append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), text + '\n' + '\n'.join(lines) +
-                              '\n')
-
-
 class HookTest(FakeFSTest):
 
     """ Tests for the pre-commit hook runner """
@@ -328,3 +268,91 @@ class HookTest(FakeFSTest):
         filename = 'myfile'
         hook.run_checks([], [('*.py', cmd)], [filename], None)
         self.assertFalse(subprocess.Popen.called)
+
+
+class CreateTest(TestCase):
+
+    """ Tests for box creation """
+
+    def setUp(self):
+        super(CreateTest, self).setUp()
+        self.tmp = tempfile.mktemp()
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        super(CreateTest, self).tearDown()
+        patch.stopall()
+        if os.path.exists(self.tmp):
+            os.unlink(self.tmp)
+        if os.path.exists(self.tmpdir):
+            shutil.rmtree(self.tmpdir)
+
+    def test_list_templates(self):
+        """ When listing templates, create should not be called """
+        create_meth = patch.object(create, 'create').start()
+        create.main(['-l'])
+        self.assertFalse(create_meth.called)
+
+    def test_default_create(self):
+        """ Ensure proper default arguments from command line """
+        create_meth = patch.object(create, 'create').start()
+        create.main(['repo', '-s'])
+        create_meth.assert_called_with('repo', True, None)
+
+    def test_append_new(self):
+        """ Appending lines to a new file adds those lines to the file """
+        lines = ['first line', 'another line']
+        create.append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_blank(self):
+        """ Appending lines to a file adds those lines to the file """
+        with open(self.tmp, 'w') as outfile:
+            outfile.write('')
+        lines = ['first line', 'another line']
+        create.append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_no_duplicates(self):
+        """ Appending lines to a file does not result in duplicate lines """
+        with open(self.tmp, 'w') as outfile:
+            outfile.write('first line\n')
+        lines = ['first line', 'another line']
+        create.append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
+
+    def test_append_no_disturb(self):
+        """ Appending lines to a file ignores existing text """
+        text = 'pre-existing text\nThat will need to be ignored\n'
+        with open(self.tmp, 'w') as outfile:
+            outfile.write(text)
+        lines = ['first line', 'another line']
+        create.append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), text + '\n'.join(lines) + '\n')
+
+    def test_append_prepend_newline(self):
+        """ Appending lines to a file adds a leading newline if needed """
+        text = 'pre-existing text\nThat will need to be ignored'
+        with open(self.tmp, 'w') as outfile:
+            outfile.write(text)
+        lines = ['first line', 'another line']
+        create.append(lines, self.tmp)
+        with open(self.tmp, 'r') as infile:
+            self.assertEquals(infile.read(), text + '\n' + '\n'.join(lines) +
+                              '\n')
+
+    def test_base_create_works(self):
+        """ Base create method should throw no exceptions """
+        create.main([self.tmpdir])
+        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
+                                                    create.CONF_FILE)))
+
+    def test_python_create_works(self):
+        """ Base create method should throw no exceptions """
+        create.main([self.tmpdir, '-t', 'python'])
+        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
+                                                    create.CONF_FILE)))

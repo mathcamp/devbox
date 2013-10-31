@@ -41,7 +41,7 @@ if __name__ == "__main__":
         entry_points={
             'console_scripts': [
                 'devbox-pre-commit = devbox.hook:precommit',
-                'devbox-create = devbox:create',
+                'devbox-create = devbox.create:main',
                 'devbox-unbox = devbox.unbox:main',
             ],
         },
