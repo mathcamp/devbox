@@ -290,6 +290,19 @@ class HookTest(FakeFSTest):
         hook.run_checks([], [('*.py', cmd)], [filename], None)
         self.assertFalse(subprocess.Popen.called)
 
+    def test_run_hooks_string_cmd(self):
+        """ String commands should be split into arrays """
+        cmd = "do something here"
+        cmdlist = ['do', 'something', 'here']
+        filename = 'myfile'
+        subprocess.call.return_value = 0
+        subprocess.Popen.return_value.returncode = 0
+        retcode = hook.run_checks([cmd], [('*', cmd)], [filename], None)
+        self.assertEqual(retcode, 0)
+        subprocess.call.assert_called_with(cmdlist, env=ANY)
+        subprocess.Popen.assert_called_with(cmdlist + [filename], env=ANY,
+                                            stdout=ANY, stderr=ANY)
+
 
 class CreateTest(TestCase):
 
