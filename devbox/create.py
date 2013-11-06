@@ -61,7 +61,7 @@ def create(repo, standalone, template_create=None):
         os.makedirs(hookdir)
 
     if template_create is not None:
-        template_create(repo, conf)
+        template_create(repo, standalone, conf)
 
     # Construct the proper pre-commit hook command
     if standalone:
@@ -99,7 +99,7 @@ def create(repo, standalone, template_create=None):
         json.dump(conf, outfile)
 
 
-def create_python(repo, conf):
+def create_python(repo, standalone, conf):
     """
     Basic python template. Runs pylint, pep8, and unit tests on commit.
     Creates a virtualenv & autoenv file.
@@ -118,6 +118,8 @@ def create_python(repo, conf):
         'autopep8',
         'tox',
     ]
+    if not standalone:
+        requirements.append('devbox')
     append(requirements, os.path.join(repo, 'requirements_dev.txt'))
     conf['post_setup'].append('pip install -r requirements_dev.txt')
     conf['post_setup'].append('pip install -e .')
