@@ -21,6 +21,7 @@ class FakeFSTest(TestCase):
         self.curdir = '/home/testuser'
         self.existing = set()
         patch.object(os.path, 'exists', self._exists).start()
+        patch.object(os.path, 'islink').start()
         patch.object(os, 'chdir', self._chdir).start()
         patch.object(os, 'getcwd', lambda: self.curdir).start()
         patch.object(os, 'symlink').start()
@@ -125,6 +126,16 @@ class UnboxTest(FakeFSTest):
         subprocess.check_call.assert_called_with(['git', 'clone', repo,
                                                   'repository'])
 
+    def test_setup_git_hooks(self):
+        """ Unbox should set up git hooks if present """
+        repo = 'git@github.com:user/repository'
+        self._add_path(os.path.join('repository', 'git_hooks'))
+        os.path.islink.return_value = False
+        unbox.main([repo])
+        self.assertTrue(call('.git/hooks') in shutil.rmtree.call_args_list)
+        self.assertTrue(call('../git_hooks', '.git/hooks') in
+                        os.symlink.call_args_list)
+
     def test_clone_to_dest(self):
         """ Unbox should clone the repository to a specific dest """
         repo = 'git@github.com:user/repository'
@@ -146,6 +157,16 @@ class UnboxTest(FakeFSTest):
         unbox.main([repo])
         subprocess.check_call.assert_called_with(['git', 'clone', repo,
                                                   'repository'])
+
+    def test_no_clone_if_dir(self):
+        """ Unbox should not clone the repo if it is a directory """
+        repo = 'repository'
+        self._add_path(repo)
+        pushd = patch.object(unbox, 'pushd').start()
+        unbox.main([repo])
+        self.assertTrue(call(['git', 'clone', repo, 'repository']) not in
+                        subprocess.check_call.call_args_list)
+        pushd.assert_called_with(repo)
 
     def test_run_pre_setup(self):
         """ Unboxing runs the pre_setup commands """
