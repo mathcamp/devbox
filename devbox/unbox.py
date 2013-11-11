@@ -15,11 +15,16 @@ import contextlib
 import shlex
 import json
 import shutil
+import stat
 import subprocess
 
+try:
+    from urllib import urlretrieve
+except ImportError:
+    from urllib.request import urlretrieve  # pylint: disable=E0611,F0401
 
 CONF_FILE = '.devbox.conf'
-HOME = os.environ['HOME']
+URL_SCRIPT = re.compile(r'^(http|https|ftp)://.+$')
 
 
 def load_conf(directory=os.curdir):
@@ -52,12 +57,31 @@ def repo_name_from_url(url):
     return all_words[-1]
 
 
-def pre_setup(conf):
-    """ Run any pre-setup scripts """
-    for command in conf.get('pre_setup', []):
+def run_commands(commands, venv=None):
+    """ Run a list of setup commands """
+    for command in commands:
         if not isinstance(command, list):
             command = shlex.split(command)
-        subprocess.check_call(command)
+        kwargs = {}
+        # add the venv to the path
+        if venv is not None:
+            kwargs['env'] = {
+                'PATH': os.path.join(os.path.curdir, venv['path'], 'bin') +
+                os.pathsep + os.environ['PATH']
+            }
+        path = None
+        # If the command is a url, download that script and run it
+        if URL_SCRIPT.match(command[0]):
+            path, _ = urlretrieve(command[0])
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IEXEC)
+            command = [path] + command[1:]
+
+        subprocess.check_call(command, **kwargs)
+
+        # If we downloaded a script, clean it up
+        if path is not None:
+            os.unlink(path)
 
 
 def setup_git_hooks():
@@ -125,20 +149,6 @@ def create_virtualenv(env, venv_bin, venv, parent):
     return os.path.abspath(env['path'])
 
 
-def post_setup(conf):
-    """ Run any post-setup scripts """
-    for command in conf.get('post_setup', []):
-        if not isinstance(command, list):
-            command = shlex.split(command)
-        kwargs = {}
-        if conf.get('env', {}).get('path') is not None:
-            kwargs['env'] = {
-                'PATH': os.path.join(os.path.curdir, conf['env']['path'],
-                                     'bin') + ':' + os.environ['PATH']
-            }
-        subprocess.check_call(command, **kwargs)
-
-
 def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
     """
     Set up a repository for development
@@ -171,7 +181,7 @@ def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
     with pushd(dest):
         update_repo(repo)
         conf = load_conf()
-        pre_setup(conf)
+        run_commands(conf.get('pre_setup', []))
         setup_git_hooks()
 
         # If python, set up a virtualenv
@@ -185,7 +195,7 @@ def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
             unbox(dep, None, no_deps, venv_bin, venv)
 
     with pushd(dest):
-        post_setup(conf)
+        run_commands(conf.get('post_setup', []), conf.get('env'))
 
 
 def main(args=None):

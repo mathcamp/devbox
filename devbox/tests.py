@@ -25,10 +25,15 @@ class FakeFSTest(TestCase):
         patch.object(os, 'chdir', self._chdir).start()
         patch.object(os, 'getcwd', lambda: self.curdir).start()
         patch.object(os, 'symlink').start()
+        patch.object(os, 'unlink').start()
+        patch.object(os, 'chmod').start()
+        patch.object(os, 'stat').start()
         patch.object(shutil, 'rmtree').start()
         patch.object(subprocess, 'check_call').start()
         patch.object(subprocess, 'call').start()
         patch.object(subprocess, 'Popen').start()
+        patch.object(unbox, 'urlretrieve').start()
+        unbox.urlretrieve.return_value = (MagicMock(), MagicMock())
         proc = subprocess.Popen.return_value = MagicMock()
         proc.communicate.return_value = (MagicMock(), MagicMock())
 
@@ -191,6 +196,15 @@ class UnboxTest(FakeFSTest):
                         subprocess.check_call.call_args_list)
         self.assertTrue(call(['command', '--two']) in
                         subprocess.check_call.call_args_list)
+
+    def test_download_scripts(self):
+        """ Unboxing downloads remote setup scripts to run """
+        command = ['http://my.host.com/path/to/script.py', '--flag']
+        commands = [command]
+        unbox.run_commands(commands)
+        unbox.urlretrieve.assert_called_with(command[0])
+        command[0] = unbox.urlretrieve()[0]
+        subprocess.check_call.assert_called_with(command)
 
     def test_run_post_setup_venv(self):
         """ Unboxing runs the post_setup commands with virtualenv path """

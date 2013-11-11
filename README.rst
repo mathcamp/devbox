@@ -66,12 +66,16 @@ Format of Devbox conf
 .devbox.conf is a json-encoded dictionary with several fields::
 
     pre_setup : list
-        List of commands to run at the start of unboxing.
+        List of commands to run at the start of unboxing. Instead of a system
+        command, you may also specify the url of a script (e.g.
+        https://raw.github.com/user/repo/master/path/to/script.sh). That script
+        will be downloaded and run.
     dependencies : list
         List of git urls to also clone and set up when unboxing this repo (run
         after setup_commands)
     post_setup : list
-        List of commands to run after any dependencies have been handled.
+        List of commands to run after any dependencies have been handled. Can
+        specify a url, same as pre_setup.
     hooks_modified : list
         A list of (pattern, command) pairs. The pattern is a glob that will
         match modified files. During the pre-commit hooks, each modified file

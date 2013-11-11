@@ -130,8 +130,8 @@ def precommit(exit=True):
                 binpath = os.path.abspath(os.path.join(prevdir,
                                                        conf['env']['path'],
                                                        'bin'))
-                if binpath not in path.split(':'):
-                    path = binpath + ':' + path
+                if binpath not in path.split(os.pathsep):
+                    path = binpath + os.pathsep + path
             retcode = run_checks(conf.get('hooks_all', []),
                                  conf.get('hooks_modified', []), modified,
                                  path)
