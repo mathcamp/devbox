@@ -45,9 +45,6 @@ if __name__ == "__main__":
                 'devbox-unbox = devbox.unbox:main',
             ],
         },
-        setup_requires=[
-            'nose>=1.0',
-        ],
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS,
         test_suite='devbox.tests',

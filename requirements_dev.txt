@@ -1,5 +1,5 @@
 pylint
 pep8
 autopep8
-coverage
 tox
+nose
