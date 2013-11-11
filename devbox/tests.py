@@ -33,6 +33,7 @@ class FakeFSTest(TestCase):
         patch.object(subprocess, 'call').start()
         patch.object(subprocess, 'Popen').start()
         patch.object(unbox, 'urlretrieve').start()
+        patch.object(unbox, 'find_executable').start()
         unbox.urlretrieve.return_value = (MagicMock(), MagicMock())
         proc = subprocess.Popen.return_value = MagicMock()
         proc.communicate.return_value = (MagicMock(), MagicMock())

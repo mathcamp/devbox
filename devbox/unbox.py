@@ -9,6 +9,7 @@ directly as a script to perform the "unbox" operation.
 """
 import os
 import re
+import sys
 
 import argparse
 import contextlib
@@ -17,6 +18,7 @@ import json
 import shutil
 import stat
 import subprocess
+from distutils.spawn import find_executable  # pylint: disable=E0611,F0401
 
 try:
     from urllib import urlretrieve
@@ -142,9 +144,22 @@ def create_virtualenv(env, venv_bin, venv, parent):
     # Otherwise, create a new virtualenv
     if not os.path.exists(env['path']):
         print("Creating virtualenv")
-        cmd = ([venv_bin] + env['args'] +
-               [env['path']])
-        subprocess.check_call(cmd)
+        # If virtualenv command exists, use that
+        if find_executable(venv_bin) is not None:
+            cmd = ([venv_bin] + env['args'] +
+                   [env['path']])
+            subprocess.check_call(cmd)
+        else:
+            # Otherwise, download virtualenv from pypi
+            version = '1.10.1'
+            path, _ = urlretrieve("https://pypi.python.org/packages/source/"
+                                  "v/virtualenv/virtualenv-%s.tar.gz" % version)
+            subprocess.check_call(['tar', 'xzf', path])
+            subprocess.check_call([sys.executable,
+                                   "virtualenv-%s/virtualenv.py" % version] +
+                                  env['args'] + [env['path']])
+            os.unlink(path)
+            shutil.rmtree("virtualenv-%s" % version)
 
     return os.path.abspath(env['path'])
 
@@ -200,7 +215,6 @@ def unbox(repo, dest=None, no_deps=False, venv_bin='virtualenv', venv=None):
 
 def main(args=None):
     """ Clone and set up a developer repository """
-    import sys
     if args is None:
         args = sys.argv[1:]
     parser = argparse.ArgumentParser(description=main.__doc__)
