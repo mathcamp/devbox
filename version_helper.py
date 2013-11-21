@@ -115,7 +115,8 @@ def parse_constants(filename):
                 continue
             key = components[0].strip(' _')
             value = '='.join(components[1:]).strip().strip('\'\"')
-            constants[key] = value
+            if key != 'all':
+                constants[key] = value
     return constants
 
 
@@ -126,6 +127,7 @@ def write_constants(filename, **constants):
                       'package-building process """%s' % os.linesep)
         for key, value in constants.items():
             outfile.write("__%s__ = '%s'%s" % (key, value, os.linesep))
+        outfile.write('__all__ = %s' % (['__%s__' % key for key in constants],))
 
 
 def git_describe(describe_args):
