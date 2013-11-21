@@ -127,7 +127,8 @@ def write_constants(filename, **constants):
                       'package-building process """%s' % os.linesep)
         for key, value in constants.items():
             outfile.write("__%s__ = '%s'%s" % (key, value, os.linesep))
-        outfile.write('__all__ = %s' % (['__%s__' % key for key in constants],))
+        outfile.write('__all__ = %s%s' % (['__%s__' % key for key in
+                                           constants], os.linesep))
 
 
 def git_describe(describe_args):
