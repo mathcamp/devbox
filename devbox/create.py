@@ -6,6 +6,7 @@ import json
 import shutil
 from pkg_resources import resource_string
 
+from .hook import check_output
 from .unbox import CONF_FILE
 
 
@@ -65,6 +66,9 @@ def render(dest, name, template, *args, **kwargs):
     pkg = kwargs.pop('_package', __package__)
     prefix = kwargs.pop('_prefix', 'templates/')
     filename = os.path.join(dest, name)
+    file_dir = os.path.dirname(filename)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
     with open(filename, 'w') as outfile:
         tmpl = resource_string(pkg, prefix + template)
         outfile.write(tmpl.format(*args, **kwargs))
@@ -187,6 +191,27 @@ def create_python(repo, standalone, conf):
     render(repo, 'tox.ini', 'python/tox.ini.template',
            package=package)
 
+    # Attempt to pull the author name and email from git config
+    author = ''
+    email = ''
+    try:
+        author = check_output(['git', 'config', 'user.name']).strip()
+    except:
+        pass
+    try:
+        email = check_output(['git', 'config', 'user.email']).strip()
+    except:
+        pass
+
+    # Write some files used by python packages
+    render(repo, 'README.rst', 'python/README.rst.template',
+           package=package)
+    render(repo, 'CHANGES.rst', 'python/CHANGES.rst.template')
+    render(repo, 'setup.py', 'python/setup.py.template',
+           package=package, author=author, email=email)
+    render(repo, os.path.join(package, '__init__.py'),
+           'python/__init__.py.template', package=package)
+
     # Add a script that runs autopep8 on repo
     autopep8 = copy_static('run_autopep8.sh', repo)
     st = os.stat(autopep8)
@@ -194,8 +219,12 @@ def create_python(repo, standalone, conf):
 
     # Include the version_helper.py script
     copy_static('version_helper.py', repo)
-    append(['include version_helper.py'],
-           os.path.join(repo, 'MANIFEST.in'))
+    manifest_lines = [
+        'include version_helper.py',
+        'include CHANGES.rst',
+        'include README.rst',
+    ]
+    append(manifest_lines, os.path.join(repo, 'MANIFEST.in'))
 
     # Add the autoenv file to activate the virtualenv
     render(repo, '.env', 'python/autoenv.template', venv=conf['env']['path'])
