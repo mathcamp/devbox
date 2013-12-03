@@ -175,8 +175,16 @@ def git_describe(describe_args):
     if proc.returncode != 0:
         print("Error parsing git revision! Make sure that you have tagged a "
               "commit, and that the tag matches the 'tag_match' argument")
-        print(output)
-        raise ValueError("Could not describe git version")
+        print("Git output: " + output)
+        return {
+            'tag': 'unknown',
+            'description': 'unknown',
+            'is_dirty': False,
+            'is_dev': False,
+            'addl_commits': 0,
+            'ref': 'unknown',
+            'dirty_suffix': '-dirty',
+        }
 
     components = description.split('-')
     # trim off the dirty suffix
