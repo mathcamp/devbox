@@ -11,6 +11,7 @@ instead of requiring devbox to be installed.
 
 """
 import fnmatch
+import locale
 import os
 import sys
 
@@ -37,16 +38,24 @@ def pushd(directory):
 
 
 def check_output(cmd):
-    """ Because python 2.6 doesn't have subprocess.check_output """
+    """
+    Nice wrapper around subprocess.check_output
+
+    Returns unicode
+
+    """
+    encoding = locale.getdefaultlocale()[1] or 'utf-8'
     if hasattr(subprocess, 'check_output'):
-        return subprocess.check_output(cmd)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
-    output = proc.communicate()[0]
-    if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd,
-                                            output)
-    return output
+        output = subprocess.check_output(cmd)
+    else:
+        # Python 2.6 doesn't have check_output
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        output = proc.communicate()[0]
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, cmd,
+                                                output)
+    return output.decode(encoding)
 
 
 def run_checks(hooks_all, hooks_modified, modified, path):

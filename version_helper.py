@@ -170,7 +170,7 @@ def git_describe(describe_args):
     proc = subprocess.Popen(GIT_DESCRIBE + describe_args,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT)
-    output, _ = proc.communicate()
+    output = proc.communicate()[0]
     description = output.decode(encoding).strip()
     if proc.returncode != 0:
         print("Error parsing git revision! Make sure that you have tagged a "
