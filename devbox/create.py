@@ -70,7 +70,7 @@ def render(dest, name, template, *args, **kwargs):
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     with open(filename, 'w') as outfile:
-        tmpl = resource_string(pkg, prefix + template)
+        tmpl = resource_string(pkg, prefix + template).decode('utf-8')
         outfile.write(tmpl.format(*args, **kwargs))
     return filename
 
