@@ -175,7 +175,7 @@ def git_describe(describe_args):
     if proc.returncode != 0:
         print("Error parsing git revision! Make sure that you have tagged a "
               "commit, and that the tag matches the 'tag_match' argument")
-        print("Git output: " + output)
+        print("Git output: " + description)
         return {
             'tag': 'unknown',
             'description': 'unknown',
