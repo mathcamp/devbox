@@ -4,3 +4,4 @@ include run_autopep8.sh
 include version_helper.py
 include README.rst
 include CHANGES.txt
+recursive-include devbox *.template

@@ -4,6 +4,7 @@ import stat
 
 import json
 import shutil
+from pkg_resources import resource_string
 
 from .unbox import CONF_FILE
 
@@ -37,6 +38,37 @@ def copy_static(name, dest):
     srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
     shutil.copyfile(srcfile, destfile)
     return destfile
+
+
+def render(dest, name, template, *args, **kwargs):
+    """
+    Render a file from the templates directory and write to a file
+
+    Parameters
+    ----------
+    dest : str
+        The directory into which to write the file
+    name : str
+        The name of the file you want written
+    template : str
+        Path to the template
+    _package : str, optional
+        The package that contains the template (default 'devbox')
+    _prefix : str, optional
+        A path prefix for the template (default 'templates/')
+    *args : list
+        Any arguments to pass to the str.format() call
+    **kwargs : dict
+        Any kwargs to pass to the str.format() call
+
+    """
+    pkg = kwargs.pop('_package', __package__)
+    prefix = kwargs.pop('_prefix', 'templates/')
+    filename = os.path.join(dest, name)
+    with open(filename, 'w') as outfile:
+        tmpl = resource_string(pkg, prefix + template)
+        outfile.write(tmpl.format(*args, **kwargs))
+    return filename
 
 
 def create(repo, standalone, force, template_create=None):
@@ -100,7 +132,7 @@ def create(repo, standalone, force, template_create=None):
             hook_cmd = 'devbox-pre-commit'
 
     if 'env' in conf and not os.path.isabs(conf['env']['path']):
-        hook_cmd = os.path.join('.', hook_cmd)
+        hook_cmd = os.path.join(os.path.curdir, hook_cmd)
     pre_commit.append(hook_cmd)
 
     # Write the pre-commit file
@@ -152,21 +184,8 @@ def create_python(repo, standalone, conf):
     copy_static('.pep8.ini', repo)
 
     # Tox
-    with open(os.path.join(repo, 'tox.ini'), 'w') as outfile:
-        outfile.write("""[tox]
-envlist = py26, py27, py32, py33
-
-[testenv]
-commands =
-    {envpython} setup.py test
-
-[testenv:py27]
-deps = -rrequirements_dev.txt
-commands =
-    {envpython} setup.py test
-    pylint --rcfile=.pylintrc %s
-    pep8 --config=.pep8.ini %s
-""" % (package, package))
+    render(repo, 'tox.ini', 'python/tox.ini.template',
+           package=package)
 
     # Add a script that runs autopep8 on repo
     autopep8 = copy_static('run_autopep8.sh', repo)
@@ -179,14 +198,7 @@ commands =
            os.path.join(repo, 'MANIFEST.in'))
 
     # Add the autoenv file to activate the virtualenv
-    envfile = os.path.join(repo, '.env')
-    if not os.path.exists(envfile):
-        with open(envfile, 'w') as outfile:
-            outfile.write(r'_envdir=$(dirname "$1")')
-            outfile.write(os.linesep)
-            outfile.write(r'source ' + os.path.join(r'$_envdir',
-                                                    conf['env']['path'], 'bin',
-                                                    'activate'))
+    render(repo, '.env', 'python/autoenv.template', venv=conf['env']['path'])
 
     # Write the virtualenv file to .gitignore
     append([conf['env']['path']], os.path.join(repo, '.gitignore'))
