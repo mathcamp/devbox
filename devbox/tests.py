@@ -345,8 +345,8 @@ class CreateTest(TestCase):
     def test_default_create(self):
         """ Ensure proper default arguments from command line """
         create_meth = patch.object(create, 'create').start()
-        create.main(['repo', '-s'])
-        create_meth.assert_called_with('repo', True, None)
+        create.main(['repo', '-s', '-f'])
+        create_meth.assert_called_with('repo', True, True, None)
 
     def test_append_new(self):
         """ Appending lines to a new file adds those lines to the file """
@@ -396,12 +396,23 @@ class CreateTest(TestCase):
 
     def test_base_create_works(self):
         """ Base create method should throw no exceptions """
-        create.main([self.tmpdir])
+        create.main([self.tmpdir, '-f'])
         self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
                                                     create.CONF_FILE)))
 
     def test_python_create_works(self):
         """ Base create method should throw no exceptions """
-        create.main([self.tmpdir, '-t', 'python'])
+        create.main([self.tmpdir, '-t', 'python', '-f'])
+        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
+                                                    create.CONF_FILE)))
+
+    def test_exception_if_dir_exists(self):
+        """ Exception if running create on existing dir without -f """
+        self.assertRaises(Exception, create.main, [self.tmpdir])
+
+    def test_base_create_no_force(self):
+        """ When create dir doesn't exist, -f shouldn't be required """
+        os.rmdir(self.tmpdir)
+        create.main([self.tmpdir])
         self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
                                                     create.CONF_FILE)))

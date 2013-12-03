@@ -39,7 +39,7 @@ def copy_static(name, dest):
     return destfile
 
 
-def create(repo, standalone, template_create=None):
+def create(repo, standalone, force, template_create=None):
     """
     Set up a repository with devbox
 
@@ -48,7 +48,9 @@ def create(repo, standalone, template_create=None):
     repo : str
         Path to create the new project in
     standalone : bool
-        If true, embed the hook.py script in the git_hooks directory
+        If True, embed the hook.py script in the git_hooks directory
+    force : bool
+        If True, overwrite any existing files at the location
     template_create : callable, optional
         Additional function to run during setup. Takes args (repo, standalone,
         conf) where conf is the pending configuration dict.
@@ -56,6 +58,9 @@ def create(repo, standalone, template_create=None):
     """
     if not os.path.exists(repo):
         os.makedirs(repo)
+    elif not force:
+        raise Exception("'%s' already exists! Pass in '-f' to overwrite "
+                        "existing files" % repo)
 
     conf = {
         'dependencies': [],
@@ -201,13 +206,16 @@ def main(args=None):
         args = sys.argv[1:]
     parser = argparse.ArgumentParser(description=create.__doc__)
     parser.add_argument('repo', help="Location of the repository to box")
-    parser.add_argument('-t', default='base', help="Template (default "
-                        "%(default)s)", choices=list(TEMPLATES.keys()))
+    parser.add_argument('-t', '--template', default='base',
+                        help="Template (default %(default)s)",
+                        choices=list(TEMPLATES.keys()))
     parser.add_argument('-s', '--standalone', action='store_true',
                         help="Don't require devbox to be installed for the "
                         "hooks to run")
     parser.add_argument('-l', '--list-templates', action='store_true',
                         help="List all available templates")
+    parser.add_argument('-f', '--force', action='store_true',
+                        help="Overwrite existing files at location")
 
     # Short-circuit --list-templates so it behaves like -h
     if '-l' in args or '--list-templates' in args:
@@ -225,4 +233,4 @@ def main(args=None):
     # TODO: Until I upload this to pypi, always use standalone mode
     args.standalone = True
 
-    create(args.repo, args.standalone, TEMPLATES[args.t])
+    create(args.repo, args.standalone, args.force, TEMPLATES[args.template])
