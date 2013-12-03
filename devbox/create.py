@@ -40,7 +40,20 @@ def copy_static(name, dest):
 
 
 def create(repo, standalone, template_create=None):
-    """ Set up a repository with devbox """
+    """
+    Set up a repository with devbox
+
+    Parameters
+    ----------
+    repo : str
+        Path to create the new project in
+    standalone : bool
+        If true, embed the hook.py script in the git_hooks directory
+    template_create : callable, optional
+        Additional function to run during setup. Takes args (repo, standalone,
+        conf) where conf is the pending configuration dict.
+
+    """
     if not os.path.exists(repo):
         os.makedirs(repo)
 
@@ -208,8 +221,8 @@ def main(args=None):
             print("%s  %s" % ((name + ':').ljust(longest_name + 1), doc))
         return
 
-    args = vars(parser.parse_args(args))
+    args = parser.parse_args(args)
     # TODO: Until I upload this to pypi, always use standalone mode
-    args['standalone'] = True
+    args.standalone = True
 
-    create(args['repo'], args['standalone'], TEMPLATES[args['t']])
+    create(args.repo, args.standalone, TEMPLATES[args.t])

@@ -54,13 +54,25 @@ def repo_name_from_url(url):
     """ Parse the repository name out of a git repo url """
     name_pattern = re.compile(r'[A-Za-z0-9_\-]+')
     all_words = name_pattern.findall(url)
+    # Repos sometimes end with ".git"
     if all_words[-1] == 'git':
         all_words.pop()
     return all_words[-1]
 
 
 def run_commands(commands, venv=None):
-    """ Run a list of setup commands """
+    """
+    Run a list of setup commands
+
+    Parameters
+    ----------
+    commands : list
+        List of strings or lists that will be run
+    venv : dict, optional
+        The venv dict from the devbox config. If present, will run all commands
+        inside that virtualenv.
+
+    """
     for command in commands:
         if not isinstance(command, list):
             command = shlex.split(command)
@@ -74,7 +86,7 @@ def run_commands(commands, venv=None):
         path = None
         # If the command is a url, download that script and run it
         if URL_SCRIPT.match(command[0]):
-            path, _ = urlretrieve(command[0])
+            path = urlretrieve(command[0])[0]
             st = os.stat(path)
             os.chmod(path, st.st_mode | stat.S_IEXEC)
             command = [path] + command[1:]
@@ -96,7 +108,7 @@ def setup_git_hooks():
 
 
 def update_repo(repo):
-    """ Make sure the repository is up-to-date """
+    """ Safely update repo and submodules (doesn't overwrite changes) """
     print("Updating", repo)
     # Update the repo safely (don't discard changes)
     subprocess.call(['git', 'pull', '--ff-only'])
@@ -146,14 +158,13 @@ def create_virtualenv(env, venv_bin, venv, parent):
         print("Creating virtualenv")
         # If virtualenv command exists, use that
         if find_executable(venv_bin) is not None:
-            cmd = ([venv_bin] + env['args'] +
-                   [env['path']])
+            cmd = [venv_bin] + env['args'] + [env['path']]
             subprocess.check_call(cmd)
         else:
             # Otherwise, download virtualenv from pypi
             version = '1.10.1'
-            path, _ = urlretrieve("https://pypi.python.org/packages/source/"
-                                  "v/virtualenv/virtualenv-%s.tar.gz" % version)
+            path = urlretrieve("https://pypi.python.org/packages/source/v/"
+                               "virtualenv/virtualenv-%s.tar.gz" % version)[0]
             subprocess.check_call(['tar', 'xzf', path])
             subprocess.check_call([sys.executable,
                                    "virtualenv-%s/virtualenv.py" % version] +
@@ -228,7 +239,8 @@ def main(args=None):
     group.add_argument('--venv-bin', help="Virtualenv binary "
                        "(default '%(default)s')",
                        default='virtualenv')
-    group.add_argument('--venv', help="Path to virtualenv to install into. "
+    group.add_argument('--venv',
+                       help="Path to the virtualenv to install into. "
                        "Will symlink to this virtualenv instead of creating "
                        "a new one.")
 

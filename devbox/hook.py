@@ -5,6 +5,10 @@ Run selected checks on the current git index
 This pre-commit hook was originally based on a hook by Lorenzo Bolla
 https://github.com/lbolla/dotfiles/blob/master/githooks/pre-commit
 
+This file was carefully constructed to have no dependencies on other files in
+the ``devbox`` package. This allows it to be embedded directly in a project
+instead of requiring devbox to be installed.
+
 """
 import fnmatch
 import os
@@ -38,7 +42,7 @@ def check_output(cmd):
         return subprocess.check_output(cmd)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT)
-    output, _ = proc.communicate()
+    output = proc.communicate()[0]
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd,
                                             output)
@@ -64,7 +68,7 @@ def run_checks(hooks_all, hooks_modified, modified, path):
                                     env={'PATH': path},
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
-            output, _ = proc.communicate()
+            output = proc.communicate()[0]
             if proc.returncode != 0:
                 if not printed_filename:
                     print(filename)
@@ -93,8 +97,8 @@ def copy_index(tmpdir):
     subprocess.check_call(['git', 'checkout-index', '-a', '-f', '--prefix=%s/'
                            % tmpdir])
 
-    # Go to each recursive submodule and us a 'git archive' tarpipe to copy the
-    # correct ref into the temporary directory
+    # Go to each recursive submodule and use a 'git archive' tarpipe to copy
+    # the correct ref into the temporary directory
     output = check_output(['git', 'submodule', 'status', '--recursive',
                            '--cached'])
     for line in output.splitlines():
@@ -107,7 +111,7 @@ def copy_index(tmpdir):
             untar = subprocess.Popen(untar_cmd, stdin=archive.stdout,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
-            out, _ = untar.communicate()
+            out = untar.communicate()[0]
             if untar.returncode != 0:
                 raise subprocess.CalledProcessError(untar.returncode,
                                                     untar_cmd, out)
@@ -126,6 +130,7 @@ def precommit(exit=True):
         path = os.environ['PATH']
         with pushd(tmpdir) as prevdir:
             conf = load_conf()
+            # Activate the virtualenv before running checks
             if 'env' in conf:
                 binpath = os.path.abspath(os.path.join(prevdir,
                                                        conf['env']['path'],
