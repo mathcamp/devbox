@@ -167,7 +167,7 @@ def create_python(repo, standalone, conf):
 
     # Developers should install some analysis tools
     requirements = [
-        'pylint',
+        'pylint>=1.1.0',
         'pep8',
         'autopep8',
         'tox',
