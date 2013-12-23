@@ -72,7 +72,7 @@ Format of Devbox conf
         will be downloaded and run.
     dependencies : list
         List of git urls to also clone and set up when unboxing this repo (run
-        after setup_commands)
+        after pre_setup)
     post_setup : list
         List of commands to run after any dependencies have been handled. Can
         specify a url, same as pre_setup.

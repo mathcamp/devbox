@@ -245,7 +245,8 @@ def main(args=None):
     import argparse
     if args is None:
         args = sys.argv[1:]
-    parser = argparse.ArgumentParser(description=create.__doc__)
+    parser = argparse.ArgumentParser(description="Set up a new project with "
+                                     "devbox")
     parser.add_argument('repo', help="Location of the repository to box")
     parser.add_argument('-t', '--template', default='base',
                         help="Template (default %(default)s)",
