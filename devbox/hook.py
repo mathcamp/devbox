@@ -63,12 +63,17 @@ def run_checks(hooks_all, hooks_modified, modified, path):
     retcode = 0
     for command in hooks_all:
         if not isinstance(command, list):
-            command = shlex.split(command.encode('utf-8'))
+            # Hacking around a unicode bug with shlex in old versions of python
+            if sys.version_info[0] < 3:
+                command = command.encode('utf-8')
+            command = shlex.split(command)
         retcode |= subprocess.call(command, env={'PATH': path})
 
     for pattern, command in hooks_modified:
         if not isinstance(command, list):
-            command = shlex.split(command.encode('utf-8'))
+            if sys.version_info[0] < 3:
+                command = command.encode('utf-8')
+            command = shlex.split(command)
         for filename in modified:
             if not fnmatch.fnmatch(filename, pattern):
                 continue
