@@ -63,12 +63,12 @@ def run_checks(hooks_all, hooks_modified, modified, path):
     retcode = 0
     for command in hooks_all:
         if not isinstance(command, list):
-            command = shlex.split(command)
+            command = shlex.split(command.encode('utf-8'))
         retcode |= subprocess.call(command, env={'PATH': path})
 
     for pattern, command in hooks_modified:
         if not isinstance(command, list):
-            command = shlex.split(command)
+            command = shlex.split(command.encode('utf-8'))
         for filename in modified:
             if not fnmatch.fnmatch(filename, pattern):
                 continue

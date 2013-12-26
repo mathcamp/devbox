@@ -75,7 +75,8 @@ def run_commands(commands, venv=None):
     """
     for command in commands:
         if not isinstance(command, list):
-            command = shlex.split(command)
+            # If the command is a string, utf-8 encode it and split it
+            command = shlex.split(command.encode('utf-8'))
         kwargs = {}
         # add the venv to the path
         if venv is not None:
