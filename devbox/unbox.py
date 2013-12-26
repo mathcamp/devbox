@@ -91,8 +91,6 @@ def run_commands(commands, venv=None):
             os.chmod(path, st.st_mode | stat.S_IEXEC)
             command = [path] + command[1:]
 
-        # Make sure we're using bytestrings for the command
-        command = [str(word) for word in command]
         subprocess.check_call(command, **kwargs)
 
         # If we downloaded a script, clean it up

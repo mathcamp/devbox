@@ -202,7 +202,6 @@ class UnboxTest(FakeFSTest):
         """ Unboxing downloads remote setup scripts to run """
         command = ['http://my.host.com/path/to/script.py', '--flag']
         commands = [command]
-        unbox.urlretrieve.return_value = 'path/to/script.py', ''
         unbox.run_commands(commands)
         unbox.urlretrieve.assert_called_with(command[0])
         command[0] = unbox.urlretrieve()[0]
