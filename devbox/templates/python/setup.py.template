@@ -2,7 +2,7 @@
 import os
 
 from setuptools import setup, find_packages
-from version_helper import git_version
+from {package}_version import git_version
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))

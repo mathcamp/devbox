@@ -33,9 +33,10 @@ def append(lines, filename):
                     outfile.write('\n')
 
 
-def copy_static(name, dest):
+def copy_static(name, dest, destname=None):
     """ Copy one of the static files to a destination """
-    destfile = os.path.join(dest, name)
+    destname = destname or name
+    destfile = os.path.join(dest, destname)
     srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
     shutil.copyfile(srcfile, destfile)
     return destfile
@@ -218,9 +219,9 @@ def create_python(repo, standalone, conf):
     os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
 
     # Include the version_helper.py script
-    copy_static('version_helper.py', repo)
+    copy_static('version_helper.py', repo, '%s_version.py' % package)
     manifest_lines = [
-        'include version_helper.py',
+        'include %s_version.py' % package,
         'include CHANGES.rst',
         'include README.rst',
     ]
