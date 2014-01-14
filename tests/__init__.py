@@ -7,7 +7,7 @@ import tempfile
 from mock import patch, call, ANY, MagicMock
 from unittest import TestCase
 
-from . import unbox, hook, create
+from devbox import unbox, hook, create
 
 
 # pylint: disable=E1101

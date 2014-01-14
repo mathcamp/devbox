@@ -5,3 +5,4 @@ include version_helper.py
 include README.rst
 include CHANGES.rst
 recursive-include devbox *.template
+recursive-exclude tests *

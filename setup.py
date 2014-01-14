@@ -10,12 +10,12 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGES = open(os.path.join(HERE, 'CHANGES.rst')).read()
 
-REQUIREMENTS = [
-    'mock',
-]
+REQUIREMENTS = []
 
 if sys.version_info[:2] < (2, 7):
     REQUIREMENTS.append('argparse')
+
+TEST_REQUIREMENTS = ['mock']
 
 if __name__ == "__main__":
     setup(
@@ -24,6 +24,7 @@ if __name__ == "__main__":
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
             'Programming Language :: Python',
+            'Programming Language :: Python :: 2',
             'Programming Language :: Python :: 2.6',
             'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3',
@@ -39,7 +40,7 @@ if __name__ == "__main__":
         url='http://github.com/mathcamp/devbox',
         zip_safe=False,
         include_package_data=True,
-        packages=find_packages(),
+        packages=find_packages(exclude=('tests',)),
         entry_points={
             'console_scripts': [
                 'devbox-pre-commit = devbox.hook:precommit',
@@ -48,7 +49,7 @@ if __name__ == "__main__":
             ],
         },
         install_requires=REQUIREMENTS,
-        tests_require=REQUIREMENTS,
-        test_suite='devbox.tests',
-        **git_version()
+        tests_require=REQUIREMENTS + TEST_REQUIREMENTS,
+        test_suite='tests',
+        **git_version('devbox')
     )
