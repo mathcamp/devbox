@@ -151,7 +151,7 @@ def create(repo, standalone, force, template_create=None):
     # Write the conf file
     conf_file = os.path.join(repo, CONF_FILE)
     with open(conf_file, 'w') as outfile:
-        json.dump(conf, outfile)
+        json.dump(conf, outfile, indent=2, sort_keys=True)
 
 
 def create_python(repo, standalone, conf):
