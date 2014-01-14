@@ -65,42 +65,38 @@ Format of Devbox conf
 =====================
 .devbox.conf is a json-encoded dictionary with several fields::
 
+    dependencies : list
+        List of git urls to also clone and set up when unboxing this repo (run
+        after pre_setup, before post_setup)
     pre_setup : list
         List of commands to run at the start of unboxing. Instead of a system
         command, you may also specify the url of a script (e.g.
         https://raw.github.com/user/repo/master/path/to/script.sh). That script
         will be downloaded and run.
-    dependencies : list
-        List of git urls to also clone and set up when unboxing this repo (run
-        after pre_setup)
     post_setup : list
         List of commands to run after any dependencies have been handled. Can
         specify a url, same as pre_setup.
+    hooks_all : list
+        List of commands to run during the pre-commit hook.
     hooks_modified : list
         A list of (pattern, command) pairs. The pattern is a glob that will
         match modified files. During the pre-commit hooks, each modified file
         that matches the pattern will be passed as an argument to the command.
         (ex. [["*.py", "pylint --rcfile=.pylintrc"], ["*.js", "jsl"]])
-    hooks_all : list
-        List of commands to run during the pre-commit hook. The advantage of
-        using this instead of putting the command directly in 'pre-commit' is
-        that these commands will only be run on the git index, not on unstaged
-        changes.
 
 Python-specific fields::
 
     env : dict
         path : str
-            The path to a virtualenv. Usually relative to repository root, but
-            can be absolute.
+            The path to a virtualenv relative to repository root.
         args : list
             List of flags to pass to the virtualenv command (e.g.
             ["--system-site-packages"])
     parent : str or None
-        When unboxing this repo, will look for a directory of this name at
-        the same level in your directory structure. If it exists, devbox
-        will make a symbolic link to that virtualenv instead of constructing
-        one for this repo.
+        When unboxing this repo, look for a directory of this name at the same
+        level in your directory structure. If it exists, devbox will make a
+        symbolic link to that virtualenv instead of constructing one for this
+        repo.
 
 Pre-Commit in-depth
 ===================
@@ -128,6 +124,4 @@ This is a simple example, but it's very easy to do this to yourself frequently.
 There's a much worse variant where the hooks can pass even though you're
 committing a broken build. The ``hook.py`` file is designed to fix this and
 other issues.  It performs a git checkout-index into a temporary folder, copies
-over any git submodules, and then runs the hooks on those temporary files. This
-means that you have some guarantee that the code that's being checked is the
-code that will be committed.
+over any git submodules, and then runs the hooks on those temporary files.
