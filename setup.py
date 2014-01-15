@@ -3,7 +3,7 @@ import os
 import sys
 
 from setuptools import setup, find_packages
-from version_helper import git_version
+from version_helper import git_version, UpdateVersion
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -20,6 +20,7 @@ TEST_REQUIREMENTS = ['mock']
 if __name__ == "__main__":
     setup(
         name='devbox',
+        version=git_version('devbox'),
         description='Quickly set up python repos for development',
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
@@ -50,6 +51,6 @@ if __name__ == "__main__":
         },
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS + TEST_REQUIREMENTS,
+        cmdclass={'update_version': UpdateVersion},
         test_suite='tests',
-        **git_version('devbox')
     )
