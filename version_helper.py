@@ -224,10 +224,7 @@ def find_package():
 def parse_constants_from_mod(filename):
     """ Parse python constants from a file """
     if not os.path.exists(filename):
-        return {
-            'source_label': 'NOTAG',
-            'version': 'unknown',
-        }
+        return None
     constants = {}
     with open(filename, 'r') as infile:
         for line in infile:
@@ -500,6 +497,14 @@ def git_version(package=None,
 
     if not os.path.isdir(os.path.join(here, '.git')):
         data = parse_constants_from_mod(mod_file)
+        # We might be inside a github archive or something
+        if data is None:
+            dirname = os.path.basename(here)
+            if dirname.lower().startswith(package.lower() + '-'):
+                return dirname.split('-', 1)[1]
+            else:
+                return 'unknown'
+
     else:
         version_data = version_data_from_git(tag_match, post_process, strict)
         data = {
