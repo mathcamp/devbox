@@ -290,10 +290,9 @@ def remove_all_references():
     """ Remove all references to version helper from this package """
     filename = os.path.join(os.path.curdir, 'setup.py')
     import_line = re.compile(r'^(from {0} import|import {0})'.format(__name__))
-    cmd_line = re.compile(r'^\s*cmdclass\s*=')
     for line in fileinput.FileInput(filename, inplace=True):
-        if not import_line.match(line) and not cmd_line.match(line):
-            print(line, end='')
+        if not import_line.match(line):
+            print(line.replace('UpdateVersion', 'None'), end='')
 
     manifest_file = os.path.join(os.path.curdir, 'MANIFEST.in')
     for line in fileinput.FileInput(manifest_file, inplace=True):
