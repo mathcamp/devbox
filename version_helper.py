@@ -109,16 +109,18 @@ and just use static version strings you can run the update_version command::
     python setup.py update_version
 
 """
+from __future__ import print_function
+
 import locale
 import os
 import re
+from distutils.core import Command
+from distutils.errors import DistutilsOptionError, DistutilsError
 
+import fileinput
 import subprocess
 from setuptools import find_packages
 
-from distutils.core import Command
-from distutils.errors import DistutilsOptionError, DistutilsError
-import fileinput
 
 GIT_DESCRIBE = ('git', 'describe')
 GIT_DESCRIBE_ARGS = ('--tags', '--dirty', '--abbrev=40', '--long')
@@ -182,13 +184,13 @@ class UpdateVersion(Command):
         }
         is_hybrid = replace_dynamic_with_static(version_data['version'])
         if not self.no_strip:
-            print "Removing %s from setup.py and MANIFEST.in" % __name__
+            print("Removing %s from setup.py and MANIFEST.in" % __name__)
             remove_all_references()
         if is_hybrid:
             mod_file = os.path.join(os.path.curdir, self.package,
                                     self.version_mod)
             write_constants_to_mod(mod_file, data)
-            print "Set version: %(version)s" % version_data
+            print("Set version: %(version)s" % version_data)
         else:
             write_constants_to_setup(data)
             write_constants_to_init(self.package, data)
@@ -280,9 +282,9 @@ def replace_dynamic_with_static(version):
             if 'import' in line:
                 pass
             else:
-                print re.sub(r'git_version\s*\(.+\)', "'%s'" % version, line),
+                print(re.sub(r'git_version\s*\(.+\)', "'%s'" % version, line), end='')
         else:
-            print line,
+            print(line, end='')
     return replaced
 
 
@@ -293,11 +295,11 @@ def remove_all_references():
     cmd_line = re.compile(r'^\s*cmdclass\s*=')
     for line in fileinput.FileInput(filename, inplace=True):
         if not import_line.match(line) and not cmd_line.match(line):
-            print line,
+            print(line, end='')
 
     manifest_file = os.path.join(os.path.curdir, 'MANIFEST.in')
     for line in fileinput.FileInput(manifest_file, inplace=True):
-        print re.sub(r'^include (%s.py)' % __name__, r'exclude \1', line),
+        print(re.sub(r'^include (%s.py)' % __name__, r'exclude \1', line), end='')
 
 
 def replace_in_file(filename, constants, pattern, replace_pattern):
@@ -315,11 +317,11 @@ def replace_in_file(filename, constants, pattern, replace_pattern):
         for pattern, replacement in sub_args:
             new_line = re.sub(pattern, replacement, line)
             if new_line != line:
-                print new_line
+                print(new_line)
                 modified = True
                 break
         if not modified:
-            print line,
+            print(line, end='')
 
 
 def git_describe(describe_args):
