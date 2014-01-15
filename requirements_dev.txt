@@ -4,3 +4,4 @@ autopep8
 tox
 nose
 mock
+jinja2

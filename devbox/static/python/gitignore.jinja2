@@ -1,0 +1,15 @@
+*.py[cod]
+{{ name }}_env
+*.swp
+dist
+*.egg-info
+*.egg
+_version.py
+.tox
+.coverage
+build
+_build
+__pycache__
+{% if embed -%}
+  {{ hookfile }}
+{%- endif %}

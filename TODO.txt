@@ -1,2 +1,6 @@
+* Make unit tests pass
+* Docstrings
+* During unbox, if not embedded download & inject hook.py
 * Fix dependency virtualenv installs
+* Add another cmdclass for the 'edit', 'save' workflow
 * PCRE matching

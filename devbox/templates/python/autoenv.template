@@ -1,2 +1,0 @@
-_envdir=$(dirname "$1")
-source $_envdir/{venv}/bin/activate

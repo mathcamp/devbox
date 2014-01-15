@@ -3,7 +3,7 @@ import os
 import sys
 
 from setuptools import setup, find_packages
-from version_helper import git_version, UpdateVersion
+from devbox_version import git_version, UpdateVersion
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -44,9 +44,19 @@ if __name__ == "__main__":
         packages=find_packages(exclude=('tests',)),
         entry_points={
             'console_scripts': [
-                'devbox-pre-commit = devbox.hook:precommit',
-                'devbox-create = devbox.create:main',
-                'devbox-unbox = devbox.unbox:main',
+                'dprecommit = devbox.hook:precommit',
+                'dcreate = devbox.create:main',
+                'dunbox = devbox.unbox:main',
+            ],
+            'devbox.templates': [
+                'simple = devbox.create:SimpleTemplate',
+                'python = devbox.create:PythonTemplate',
+            ],
+            'devbox.simple': [
+                'static = devbox.static',
+            ],
+            'devbox.python': [
+                'static = devbox.static.python',
             ],
         },
         install_requires=REQUIREMENTS,

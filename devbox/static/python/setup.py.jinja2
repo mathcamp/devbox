@@ -2,7 +2,7 @@
 import os
 
 from setuptools import setup, find_packages
-from {package}_version import git_version
+from {{ package }}_version import git_version
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -14,19 +14,18 @@ REQUIREMENTS = [
 
 if __name__ == "__main__":
     setup(
-        name='{package}',
+        name='{{ package }}',
+        version=git_version('{{ package }}'),
         description='My new package',
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
             'Programming Language :: Python',
         ],
-        author='{author}',
-        author_email='{email}',
+        author='{{ author }}',
+        author_email='{{ email }}',
         url='',
-        zip_safe=False,
         include_package_data=True,
         packages=find_packages(),
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS,
-        **git_version()
     )
