@@ -169,8 +169,8 @@ class UpdateVersion(Command):
         version_data['tag'] = version_data['tag'][len(self.tag_prefix):]
 
     def run(self):
-        version_data = version_data_from_git(self.tag_match, self.strip_tag,
-                                             self.strict)
+        version_data = git_version_data(self.tag_match, self.strip_tag,
+                                        self.strict)
         if version_data['is_dev']:
             if not self.dev:
                 raise DistutilsError("Development version '%(version)s' "
@@ -279,7 +279,8 @@ def replace_dynamic_with_static(version):
             if 'import' in line:
                 pass
             else:
-                print(re.sub(r'git_version\s*\(.+\)', "'%s'" % version, line), end='')
+                print(re.sub(r'git_version\s*\(.+\)', "'%s'" %
+                      version, line), end='')
         else:
             print(line, end='')
     return replaced
@@ -296,7 +297,8 @@ def remove_all_references():
 
     manifest_file = os.path.join(os.path.curdir, 'MANIFEST.in')
     for line in fileinput.FileInput(manifest_file, inplace=True):
-        print(re.sub(r'^include (%s.py)' % __name__, r'exclude \1', line), end='')
+        print(re.sub(r'^include (%s.py)' %
+              __name__, r'exclude \1', line), end='')
 
 
 def replace_in_file(filename, constants, pattern, replace_pattern):
@@ -406,7 +408,7 @@ def git_describe(describe_args):
     }
 
 
-def version_data_from_git(tag_match, post_process, strict):
+def git_version_data(tag_match='[0-9]*', post_process=None, strict=False):
     """
     Convert the raw ``git describe`` data into version info
 
@@ -506,7 +508,7 @@ def git_version(package=None,
                 return 'unknown'
 
     else:
-        version_data = version_data_from_git(tag_match, post_process, strict)
+        version_data = git_version_data(tag_match, post_process, strict)
         data = {
             'version': version_data['version']
         }
