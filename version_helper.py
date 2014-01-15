@@ -497,11 +497,11 @@ def git_version(package=None,
     mod_file = os.path.join(here, package, version_mod)
 
     if not os.path.isdir(os.path.join(here, '.git')):
-        return parse_constants_from_mod(mod_file)
-
-    version_data = version_data_from_git(tag_match, post_process, strict)
-    data = {
-        'version': version_data['version']
-    }
-    write_constants_to_mod(mod_file, data)
-    return version_data['version']
+        data = parse_constants_from_mod(mod_file)
+    else:
+        version_data = version_data_from_git(tag_match, post_process, strict)
+        data = {
+            'version': version_data['version']
+        }
+        write_constants_to_mod(mod_file, data)
+    return data['version']
