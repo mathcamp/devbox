@@ -41,36 +41,25 @@ If you want to embed the version as __version__ (PEP 396), put the following
 lines into your package's __init__.py file::
 
     try:
-        from ._version import *  # pylint: disable=F0401,W0401
+        from ._version import *
     except ImportError:
         __version__ = 'unknown'
 
 """
 import locale
 import os
-import re
 
 import subprocess
+from setuptools import find_packages
 
 
-# This version regex was constructed from the regex-ish description here:
-# http://www.python.org/dev/peps/pep-0440/#public-version-identifiers
-VERSION_SCHEME = re.compile(r'^\d+(\.\d+)+'
-                            r'((a|b|c|rc)\d+)?'
-                            r'(\.post\d+)?'
-                            r'(\.dev\d+)?$')
 GIT_DESCRIBE = ('git', 'describe')
 GIT_DESCRIBE_ARGS = ('--tags', '--dirty', '--abbrev=40', '--long')
 
 
-def find_package(path):
+def find_package():
     """
-    Find the directory that contains the python package in a repository
-
-    Parameters
-    ----------
-    path : str
-        The path to the repository
+    Find the correct package
 
     Returns
     -------
@@ -83,21 +72,14 @@ def find_package(path):
         If a single package cannot be found
 
     """
-    dirname = os.path.basename(path)
-    if os.path.isdir(os.path.join(path, dirname)):
-        return dirname
-    candidates = []
-    for filename in os.listdir(path):
-        init = os.path.join(path, filename, '__init__.py')
-        if os.path.exists(init):
-            candidates.append(filename)
+    candidates = find_packages(exclude=['*.*'])
     if len(candidates) == 1:
         return candidates[0]
     elif len(candidates) == 0:
-        raise IOError("No package found in repo '%s'" % path)
+        raise IOError("No package found")
     else:
-        raise IOError("Multiple possible packages found in repo '%s'! "
-                      "Please specify one." % path)
+        raise IOError("Multiple possible packages found! "
+                      "Please specify one: %s" % (candidates,))
 
 
 def parse_constants(filename):
@@ -265,7 +247,7 @@ def git_version(package=None,
     here = os.path.abspath(os.path.dirname(__file__))
 
     if package is None:
-        package = find_package(here)
+        package = find_package()
 
     version_file_path = os.path.join(here, package, version_mod)
 
@@ -298,9 +280,5 @@ def git_version(package=None,
             (source_url_on_dev or not version_data['is_dev']):
         data['source_url'] = source_url_format % data
     write_constants(version_file_path, **data)
-
-    if pep440 and not VERSION_SCHEME.match(data['version']):
-        raise Exception("Package version '%(version)s' "
-                        "is not a valid PEP 440 version string!" % data)
 
     return data
