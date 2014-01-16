@@ -72,40 +72,7 @@ class CreateVenvTest(FakeFSTest):
             'path': 'venv',
             'args': [],
         }
-        unbox.create_virtualenv(env, 'virtualenv', None, None)
-        subprocess.check_call.assert_called_with(['virtualenv', env['path']])
-
-    def test_create_virtualenv_dependency(self):
-        """ Creating dependency virtualenv should symlink to parent """
-        env = {
-            'path': 'venv',
-            'args': [],
-        }
-        virtualenv = '../parent/venv'
-        unbox.create_virtualenv(env, 'virtualenv', virtualenv, None)
-        os.symlink.assert_called_with(virtualenv, env['path'])
-
-    def test_create_virtualenv_child(self):
-        """ Creating a non-dependency env with a parent should symlink """
-        env = {
-            'path': 'childenv',
-            'args': [],
-        }
-        parent_conf = {'env': {'path': 'venv'}}
-        self._add_path('../parentrepo')
-        self._add_path('../parentrepo/venv')
-        patch.object(unbox, 'load_conf', lambda _: parent_conf).start()
-        unbox.create_virtualenv(env, 'virtualenv', None, 'parentrepo')
-        os.symlink.assert_called_with('../parentrepo/venv', env['path'])
-
-    def test_create_virtualenv_child_no_env(self):
-        """ Child virtualenv should make env if parent env is missing """
-        env = {
-            'path': 'venv',
-            'args': [],
-        }
-        unbox.create_virtualenv(env, 'virtualenv', None, 'nonexistent_parent')
-
+        unbox.create_virtualenv(env, 'virtualenv')
         subprocess.check_call.assert_called_with(['virtualenv', env['path']])
 
 
