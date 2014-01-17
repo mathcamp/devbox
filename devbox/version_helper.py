@@ -450,7 +450,7 @@ def git_version_data(tag_match='[0-9]*', post_process=None, strict=False):
     else:
         version = version_data['tag']
     version_data['version'] = version
-    version_data['is_prerelease'] = bool(re.match(r'^\d+(\.\d+)*$', version))
+    version_data['is_prerelease'] = re.match(r'^\d+(\.\d+)*$', version) is None
 
     return version_data
 
