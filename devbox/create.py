@@ -1,37 +1,35 @@
 """ Box creation helper script """
-import importlib
 import os
-import inspect
 import stat
 
+import importlib
+import inspect
 import json
-import shutil
 from pkg_resources import resource_string, iter_entry_points
 
+from . import __version__
 from .hook import check_output
 from .unbox import CONF_FILE
 
 
 class StaticResource(object):
+
+    """ Wrapper for static resource location """
+
     def __init__(self, module_name):
         self.mod, path = module_name.split('.', 1)
         self.path = path.replace('.', '/') + '/'
 
     def load(self, name):
+        """ Load a file from this static resource dir """
         data = resource_string(self.mod, self.path + name)
         if data is not None:
             return data.decode('utf-8')
 
-def copy_static(name, dest, destname=None):
-    """ Copy one of the static files to a destination """
-    destname = destname or name
-    destfile = os.path.join(dest, destname)
-    srcfile = os.path.join(os.path.dirname(__file__), os.pardir, name)
-    shutil.copyfile(srcfile, destfile)
-    return destfile
-
 
 class BoxTemplate(object):
+
+    """ Base class for all devbox templates """
     name = None
     description = 'No description available'
 
@@ -40,7 +38,6 @@ class BoxTemplate(object):
 
     def __init__(self):
         self.repo = None
-        self._embed = None
         self._force = None
         self.conf = {
             'dependencies': [],
@@ -52,6 +49,7 @@ class BoxTemplate(object):
 
     @classmethod
     def walk_static_resources(cls):
+        """ Iterate over all static resource locations """
         static_entry_points = iter_entry_points('devbox.' + cls.name)
         for entry_point in static_entry_points:
             yield StaticResource(entry_point.module_name)
@@ -61,25 +59,26 @@ class BoxTemplate(object):
                     yield resource
 
     def options(self, parser):
+        """ Override this to add custom command line options """
         pass
 
     def global_options(self, parser):
+        """ These options are added to all template commands """
         parser.add_argument('repo', help="Location of the repository to box")
-        parser.add_argument('--no-embed', action='store_true',
-                            help="Don't embed the hook.py file (precommit "
-                            "will require devbox to be installed)")
         parser.add_argument('-f', '--force', action='store_true',
                             help="Overwrite existing files at location")
 
     def global_configure(self, args):
+        """ This will configure the template with the global options """
         self.repo = args.repo
-        self._embed = not args.no_embed
         self._force = args.force
 
     def configure(self, args):
+        """ Override this to handle the parsed command line arguments """
         pass
 
     def setup(self):
+        """ Executed before :meth:`~run` """
         if not os.path.exists(self.repo):
             os.makedirs(self.repo)
         elif not self._force:
@@ -87,15 +86,18 @@ class BoxTemplate(object):
                             "existing files" % self.repo)
 
     def run(self):
+        """ All templates must override this method """
         raise NotImplementedError
 
     def finalize(self):
+        """ Executed after :meth:`~run` """
         # Write the conf file
         conf_file = os.path.join(self.repo, self.conf_file)
         with open(conf_file, 'w') as outfile:
             json.dump(self.conf, outfile, indent=2, sort_keys=True)
 
     def load(self, name):
+        """ Load a template from the static resource directories """
         for resource in self.walk_static_resources():
             data = resource.load(name)
             if data is not None:
@@ -103,16 +105,26 @@ class BoxTemplate(object):
         raise ValueError("Could not find static resource '%s'" % name)
 
     def render(self, static_resource, **kwargs):
+        """ Render a template """
         data = self.load(static_resource)
         from jinja2 import Template
         template = Template(data)
         return template.render(**kwargs)
 
     def render_write(self, static_resource, *dest, **kwargs):
+        """ Render a template and write it to a file """
         rendered = self.render(static_resource, **kwargs)
         self.write(rendered, *dest)
 
+    def copy_static(self, static_resource, *dest):
+        """ Copy a static file into the destination repo """
+        data = self.load(static_resource)
+        if not dest:
+            dest = [static_resource]
+        self.write(data, *dest)
+
     def write(self, contents, *dest):
+        """ Write a string to a file """
         filename = os.path.join(*dest)
         if not os.path.isabs(filename):
             filename = os.path.join(self.repo, filename)
@@ -123,44 +135,39 @@ class BoxTemplate(object):
             outfile.write(contents)
 
     def writelines(self, lines, *dest):
+        """ Write a list of lines to a file """
         self.write('\n'.join(lines), *dest)
 
-    def write_source(self, module, *dest):
+    def write_source(self, module, *dest, **kwargs):
+        """ Write the source code of a module to a file """
+        tag_version = kwargs.get('tag_version', True)
         mod = importlib.import_module(module)
         source = inspect.getsource(mod)
+        if tag_version:
+            lines = source.splitlines()
+            version_line = '# GENERATED BY devbox==%s' % __version__
+            for i, line in enumerate(lines):
+                if not line.startswith('#'):
+                    source = '\n'.join(lines[:i] + [version_line] + lines[i:])
+                    break
         self.write(source, *dest)
 
-    def append(self, lines, *paths):
-        """ Append one or more lines to a file if they are not already present """
-        filename = os.path.join(paths)
-        prepend_newline = False
-        if os.path.exists(filename):
-            with open(filename, 'r') as infile:
-                text = infile.read()
-                if text and not text.endswith('\n'):
-                    prepend_newline = True
-                file_lines = set(text.splitlines())
-        else:
-            file_lines = set()
-
-        to_append = set(lines) - file_lines
-        if to_append:
-            with open(filename, 'a') as outfile:
-                if prepend_newline:
-                    outfile.write('\n')
-                for line in lines:
-                    if line in to_append:
-                        outfile.write(line)
-                        outfile.write('\n')
+    def chmod_exec(self, *dest):
+        """ Make a file in the destination repo executable """
+        filename = os.path.join(*dest)
+        if not os.path.isabs(filename):
+            filename = os.path.join(self.repo, filename)
+        st = os.stat(filename)
+        os.chmod(filename, st.st_mode | stat.S_IEXEC)
 
 
 class SimpleTemplate(BoxTemplate):
+
+    """ Template for any project """
     description = "Basic setup for any repo"
 
     def run(self):
-        # Embed the hook.py file
-        if self._embed:
-            self.write_source('devbox.hook', self.hook_dir, 'hook.py')
+        self.write_source('devbox.hook', self.hook_dir, 'hook.py')
         hookfile = os.path.join(self.hook_dir, 'hook.py')
 
         precommit_file = os.path.join(self.hook_dir, 'pre-commit')
@@ -168,19 +175,20 @@ class SimpleTemplate(BoxTemplate):
         if not os.path.exists(precommit_file_dest):
             self.render_write('pre-commit.jinja2', precommit_file,
                               hookfile=hookfile)
-        st = os.stat(precommit_file_dest)
-        os.chmod(precommit_file_dest, st.st_mode | stat.S_IEXEC)
+        self.chmod_exec(self.hook_dir, 'pre-commit')
 
         if not os.path.exists(os.path.join(self.repo, '.gitignore')):
-            self.render_write('gitignore.jinja2', '.gitignore',
-                              embed=self._embed, hookfile=hookfile)
+            self.render_write('gitignore.jinja2', '.gitignore')
+
 
 class PythonTemplate(SimpleTemplate):
+
+    """ Template for python projects """
     description = """
     Basic python template. Runs pylint, pep8, and unit tests on commit.
     Creates a virtualenv & autoenv file.
-
     """
+
     def run(self):
         package = os.path.basename(os.path.abspath(self.repo))
         venv = package + '_env'
@@ -196,8 +204,6 @@ class PythonTemplate(SimpleTemplate):
             'autopep8',
             'tox',
         ]
-        if not self._embed:
-            requirements.append('devbox')
         self.writelines(requirements, 'requirements_dev.txt')
         self.conf['post_setup'].append('pip install -r requirements_dev.txt')
         self.conf['post_setup'].append('pip install -e .')
@@ -208,8 +214,8 @@ class PythonTemplate(SimpleTemplate):
             ['*.py', ['pep8', '--config=.pep8.ini']],
         ])
         self.conf['hooks_all'].append('python setup.py test')
-        copy_static('.pylintrc', self.repo)
-        copy_static('.pep8.ini', self.repo)
+        self.copy_static('pylintrc', '.pylintrc')
+        self.copy_static('pep8.ini', '.pep8.ini')
 
         # Tox
         self.render_write('tox.ini.jinja2', 'tox.ini', package=package)
@@ -235,9 +241,8 @@ class PythonTemplate(SimpleTemplate):
                           package=package)
 
         # Add a script that runs autopep8 on repo
-        autopep8 = copy_static('run_autopep8.sh', self.repo)
-        st = os.stat(autopep8)
-        os.chmod(autopep8, st.st_mode | stat.S_IEXEC)
+        self.copy_static('run_autopep8.sh')
+        self.chmod_exec('run_autopep8.sh')
 
         # Include the version_helper.py script
         version_helper = '%s_version.py' % package
@@ -255,7 +260,7 @@ class PythonTemplate(SimpleTemplate):
         self.render_write('gitignore.jinja2', '.gitignore', name=package)
 
         self.render_write('pre-commit.jinja2', self.hook_dir,
-                          'pre-commit', embed=self._embed, venv=venv)
+                          'pre-commit', venv=venv)
         super(PythonTemplate, self).run()
 
 
@@ -299,15 +304,12 @@ def main(args=None):
         print("Devbox templates")
         print("================")
         for name, tmpl in sorted(templates.items()):
-            doc = tmpl.description
-            doc = indent.join([line.strip() for line in doc.splitlines()])
-            print("%s  %s" % ((name + ':').ljust(longest_name + 1), doc))
+            desc = tmpl.description.strip()
+            desc = indent.join([line.strip() for line in desc.splitlines()])
+            print("%s  %s" % ((name + ':').ljust(longest_name + 1), desc))
         return
 
     args = parser.parse_args(args)
-
-    # TODO: Until I upload this to pypi, always use standalone mode
-    args.standalone = True
 
     tmpl = templates[args.template]
     tmpl.global_configure(args)
