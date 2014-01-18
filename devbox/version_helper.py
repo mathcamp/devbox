@@ -109,6 +109,7 @@ and just use static version strings you can run the update_version command::
     python setup.py update_version
 
 """
+# pylint: disable=E0611,F0401,C0111
 from __future__ import print_function
 
 import locale
