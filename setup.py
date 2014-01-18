@@ -47,7 +47,6 @@ if __name__ == "__main__":
         packages=find_packages(exclude=('tests',)),
         entry_points={
             'console_scripts': [
-                'dprecommit = devbox.hook:precommit',
                 'dcreate = devbox.create:main',
                 'dunbox = devbox.unbox:main',
             ],

@@ -164,7 +164,7 @@ def precommit(exit=True):
         shutil.rmtree(tmpdir)
 
 
-def main():
+def main(args=None):
     """
     Usage: ./hook.py all
        or: ./hook.py checkout-index [DEST]
@@ -179,18 +179,20 @@ def main():
                       directory
 
     """
-    if '-h' in sys.argv:
+    if args is None:
+        args = sys.argv[1:]
+    if '-h' in args:
         print(main.__doc__)
         sys.exit()
-    if len(sys.argv) < 2:
+    if len(args) < 1:
         print(main.__doc__)
         sys.exit(1)
-    command = sys.argv[1]
+    command = args[0]
     if command == 'all':
         precommit()
     elif command == 'checkout-index':
-        if len(sys.argv) > 2:
-            index_dir = sys.argv[2]
+        if len(args) > 1:
+            index_dir = args[1]
             if not os.path.exists(index_dir):
                 os.makedirs(index_dir)
         else:
@@ -198,10 +200,10 @@ def main():
         copy_index(index_dir)
         print(index_dir)
     elif command == 'run-checks':
-        if len(sys.argv) < 3:
+        if len(args) < 2:
             print(main.__doc__)
             sys.exit(1)
-        retcode = run_checks_in_dir(sys.argv[2])
+        retcode = run_checks_in_dir(args[1])
         sys.exit(retcode)
     else:
         print(main.__doc__)

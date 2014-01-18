@@ -2,8 +2,6 @@ Devbox
 ======
 .. image:: https://travis-ci.org/mathcamp/devbox.png?branch=master
   :target: https://travis-ci.org/mathcamp/devbox
-.. image:: https://coveralls.io/repos/mathcamp/devbox/badge.png
-  :target: https://coveralls.io/r/mathcamp/devbox
 
 This is a tool for quickly setting up repositories for development. It was
 created specifically for python projects, but has some features that should be
@@ -11,9 +9,9 @@ universally useful.
 
 Create a Box
 ============
-First install devbox using pip. Then run ``devbox-create path/to/repository``.
+First install devbox using pip. Then run ``dcreate python path/to/repository``.
 There are different templates which provide different base configurations for
-your repo. For more information run ``devbox-create -h``.
+your repo. For more information run ``dcreate -h``.
 
 After running the create command, your repository will have a bunch of new
 files that provide some default behavior. Alter them as you desire, then add
@@ -21,8 +19,8 @@ and commit them.
 
 Unboxing
 ========
-If devbox is installed, you can run ``devbox-unbox
-git@github.com:user/repo.git``. If devbox is not installed, run::
+If devbox is installed, you can run ``dunbox git@github.com:user/repo.git``. If
+devbox is not installed, run::
 
     wget https://raw.github.com/mathcamp/devbox/master/devbox/unbox.py && \
     python unbox.py git@github.com:user/repo.git
@@ -55,8 +53,8 @@ Python-specific Features
 Devbox provides a simple interface for creating and installing into a
 **virtualenv** automatically during setup.
 
-Devbox optionally includes ``version_helper.py``, a simple utility for
-automatically generating package versions based on git tags.
+Devbox optionally includes ``version_helper.py``, a utility for automatically
+generating package versions based on git tags.
 
 For linking to other projects, investigate the ``parent`` and ``dependencies``
 options in the conf file. Those will be respected in the virtualenv.
