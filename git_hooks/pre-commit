@@ -1,5 +1,3 @@
 #!/bin/bash -e
-# Re-install the package if it's been screwed up by tox
-pip install -e . > /dev/null
 git diff-index --check --cached HEAD --
-./devbox_env/bin/python devbox/hook.py
+./devbox_env/bin/python devbox/hook.py all

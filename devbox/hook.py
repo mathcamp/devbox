@@ -2,24 +2,20 @@
 """
 Run selected checks on the current git index
 
-This pre-commit hook was originally based on a hook by Lorenzo Bolla
-https://github.com/lbolla/dotfiles/blob/master/githooks/pre-commit
-
 This file was carefully constructed to have no dependencies on other files in
 the ``devbox`` package. This allows it to be embedded directly in a project
 instead of requiring devbox to be installed.
 
 """
+import contextlib
 import fnmatch
+import json
 import locale
 import os
-import sys
-
-import contextlib
-import json
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -131,6 +127,27 @@ def copy_index(tmpdir):
                                                     untar_cmd, out)
 
 
+def run_checks_in_dir(tmpdir):
+    """ Run precommit checks on the code in a directory """
+    modified = check_output(['git', 'diff', '--cached', '--name-only',
+                             '--diff-filter=ACMRT'])
+    modified = [name.strip() for name in modified.splitlines()]
+    path = os.environ['PATH']
+    with pushd(tmpdir) as prevdir:
+        conf = load_conf()
+        # Activate the virtualenv before running checks
+        if 'env' in conf:
+            binpath = os.path.abspath(os.path.join(prevdir,
+                                                   conf['env']['path'],
+                                                   'bin'))
+            if binpath not in path.split(os.pathsep):
+                path = binpath + os.pathsep + path
+        return run_checks(conf.get('hooks_all', []),
+                          conf.get('hooks_modified', []),
+                          modified,
+                          path)
+
+
 def precommit(exit=True):
     """ Run all the pre-commit checks """
     tmpdir = tempfile.mkdtemp()
@@ -138,23 +155,7 @@ def precommit(exit=True):
     try:
         copy_index(tmpdir)
 
-        modified = check_output(['git', 'diff', '--cached', '--name-only',
-                                 '--diff-filter=ACMRT'])
-        modified = [name.strip() for name in modified.splitlines()]
-        path = os.environ['PATH']
-        with pushd(tmpdir) as prevdir:
-            conf = load_conf()
-            # Activate the virtualenv before running checks
-            if 'env' in conf:
-                binpath = os.path.abspath(os.path.join(prevdir,
-                                                       conf['env']['path'],
-                                                       'bin'))
-                if binpath not in path.split(os.pathsep):
-                    path = binpath + os.pathsep + path
-            retcode = run_checks(conf.get('hooks_all', []),
-                                 conf.get('hooks_modified', []), modified,
-                                 path)
-
+        retcode = run_checks_in_dir(tmpdir)
         if exit:
             sys.exit(retcode)
         else:
@@ -162,5 +163,49 @@ def precommit(exit=True):
     finally:
         shutil.rmtree(tmpdir)
 
+
+def main():
+    """
+    Usage: ./hook.py all
+       or: ./hook.py checkout-index [DEST]
+       or: ./hook.py run-checks DEST
+
+    all               Check out the git index and run all hooks defined in
+                      .devbox.conf
+    checkout-index    Check out the git index to the provided destination dir.
+                      If none is provided, will create a temporary directory
+                      and write the location to stdout
+    run-checks        Run the checks defined in .devbox.conf on the destination
+                      directory
+
+    """
+    if '-h' in sys.argv:
+        print main.__doc__
+        sys.exit()
+    if len(sys.argv) < 2:
+        print main.__doc__
+        sys.exit(1)
+    command = sys.argv[1]
+    if command == 'all':
+        precommit()
+    elif command == 'checkout-index':
+        if len(sys.argv) > 2:
+            index_dir = sys.argv[2]
+            if not os.path.exists(index_dir):
+                os.makedirs(index_dir)
+        else:
+            index_dir = tempfile.mkdtemp()
+        copy_index(index_dir)
+        print index_dir
+    elif command == 'run-checks':
+        if len(sys.argv) < 3:
+            print main.__doc__
+            sys.exit(1)
+        retcode = run_checks_in_dir(sys.argv[2])
+        sys.exit(retcode)
+    else:
+        print main.__doc__
+        sys.exit(1)
+
 if __name__ == '__main__':
-    precommit()
+    main()

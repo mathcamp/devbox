@@ -1,4 +1,0 @@
-* Allow use of hook.py as library (expose git manipulation)
-
-* PCRE matching of changed files
-* Allow piped commands in hooks

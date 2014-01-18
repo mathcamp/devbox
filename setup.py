@@ -24,7 +24,7 @@ if __name__ == "__main__":
     setup(
         name='devbox',
         version=git_version('devbox'),
-        description='Quickly set up python repos for development',
+        description='Developer environment candy',
         long_description=README + '\n\n' + CHANGES,
         classifiers=[
             'Programming Language :: Python',
