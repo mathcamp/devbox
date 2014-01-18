@@ -10,10 +10,13 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGES = open(os.path.join(HERE, 'CHANGES.rst')).read()
 
-REQUIREMENTS = []
+REQUIREMENTS = [
+    'jinja2'
+]
 
 if sys.version_info[:2] < (2, 7):
     REQUIREMENTS.append('argparse')
+    REQUIREMENTS.append('importlib')
 
 TEST_REQUIREMENTS = ['mock']
 

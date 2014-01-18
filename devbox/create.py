@@ -272,12 +272,6 @@ def main(args=None):
     if sys.version_info[0] == 3:
         print("dcreate may not work in python 3 due to dependence on jinja2")
 
-    try:
-        import jinja2
-    except ImportError:
-        print("dcreate requires jinja2")
-        print("pip install jinja2")
-        sys.exit(1)
     if args is None:
         args = sys.argv[1:]
 
