@@ -1,17 +1,22 @@
 """ Test the unboxing process """
 import os
+
 import shutil
 import subprocess
-from unittest import TestCase
-
 from mock import patch, call, MagicMock
 
 from devbox import unbox
 
 
+try:
+    import unittest2 as unittest  # pylint: disable=F0401
+except ImportError:
+    import unittest
+
+
 # pylint: disable=E1101
 
-class FakeFSTest(TestCase):
+class FakeFSTest(unittest.TestCase):
 
     """ Base test case that stubs out filesystem commands """
 

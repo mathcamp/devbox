@@ -17,6 +17,7 @@ REQUIREMENTS = [
 if sys.version_info[:2] < (2, 7):
     REQUIREMENTS.append('argparse')
     REQUIREMENTS.append('importlib')
+    REQUIREMENTS.append('unittest2')
 
 TEST_REQUIREMENTS = ['mock']
 
