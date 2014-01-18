@@ -1,13 +1,12 @@
 """ Test the unboxing process """
 import os
-
 import shutil
 import subprocess
-import tempfile
-from mock import patch, call, ANY, MagicMock
 from unittest import TestCase
 
-from devbox import unbox, hook, create
+from mock import patch, call, MagicMock
+
+from devbox import unbox
 
 
 # pylint: disable=E1101
@@ -72,7 +71,7 @@ class CreateVenvTest(FakeFSTest):
             'path': 'venv',
             'args': [],
         }
-        unbox.create_virtualenv(env, 'virtualenv')
+        unbox.create_virtualenv(env)
         subprocess.check_call.assert_called_with(['virtualenv', env['path']])
 
 
@@ -84,8 +83,14 @@ class UnboxTest(FakeFSTest):
         super(UnboxTest, self).setUp()
         patch.object(unbox, 'load_conf').start()
         self.configs = {}
-        unbox.load_conf.side_effect = lambda: self.configs.get(
-            self.curdir, {})
+        unbox.load_conf.side_effect = self._getconf
+
+    def _getconf(self, directory=None):
+        """ Get the devbox config for a directory """
+        if directory is None:
+            directory = self.curdir
+        path = os.path.abspath(os.path.join(self.curdir, directory))
+        return self.configs.get(path, {})
 
     def _setconf(self, directory, config):
         """ Set the devbox config for a specific directory """
@@ -226,160 +231,3 @@ class UnboxTest(FakeFSTest):
         unbox.main([repo, '--no-deps'])
         self.assertTrue(call(['git', 'clone', nextrepo, 'nextrepo']) not in
                         subprocess.check_call.call_args_list)
-
-
-class HookTest(FakeFSTest):
-
-    """ Tests for the pre-commit hook runner """
-
-    def test_pushd(self):
-        """ Pushd should temporarily chdir """
-        startdir = os.getcwd()
-        pushdir = 'the_next_dir'
-        with hook.pushd(pushdir) as prevdir:
-            self.assertEqual(prevdir, startdir)
-            self.assertEqual(os.getcwd(), os.path.join(startdir, pushdir))
-        self.assertEqual(os.getcwd(), startdir)
-
-    def test_run_hooks_all(self):
-        """ Hook runs all hooks_all commands """
-        cmd = ['do', 'something', 'here']
-        path = 'path'
-        subprocess.call.return_value = 0
-        retcode = hook.run_checks([cmd], [], [], path)
-        self.assertEqual(retcode, 0)
-        subprocess.call.assert_called_with(cmd, env={'PATH': path})
-
-    def test_fail_when_hook_fails(self):
-        """ If a hook fails, the returncode should be nonzero """
-        cmd = ['do', 'something', 'here']
-        subprocess.call.return_value = 1
-        retcode = hook.run_checks([cmd], [], [], None)
-        self.assertNotEqual(retcode, 0)
-
-    def test_run_hooks_modified(self):
-        """ Run the hooks_modified commands on matching files """
-        cmd = ['do', 'something', 'here']
-        filename = 'myfile'
-        hook.run_checks([], [('*', cmd)], [filename], None)
-        subprocess.Popen.assert_called_with(cmd + [filename], env=ANY,
-                                            stdout=ANY, stderr=ANY)
-
-    def test_no_run_hooks_modified(self):
-        """ Don't run the hooks_modified commands on nonmatching files """
-        cmd = ['do', 'something', 'here']
-        filename = 'myfile'
-        hook.run_checks([], [('*.py', cmd)], [filename], None)
-        self.assertFalse(subprocess.Popen.called)
-
-    def test_run_hooks_string_cmd(self):
-        """ String commands should be split into arrays """
-        cmd = "do something here"
-        cmdlist = ['do', 'something', 'here']
-        filename = 'myfile'
-        subprocess.call.return_value = 0
-        subprocess.Popen.return_value.returncode = 0
-        retcode = hook.run_checks([cmd], [('*', cmd)], [filename], None)
-        self.assertEqual(retcode, 0)
-        subprocess.call.assert_called_with(cmdlist, env=ANY)
-        subprocess.Popen.assert_called_with(cmdlist + [filename], env=ANY,
-                                            stdout=ANY, stderr=ANY)
-
-
-class CreateTest(TestCase):
-
-    """ Tests for box creation """
-
-    def setUp(self):
-        super(CreateTest, self).setUp()
-        self.tmp = tempfile.mktemp()
-        self.tmpdir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        super(CreateTest, self).tearDown()
-        patch.stopall()
-        if os.path.exists(self.tmp):
-            os.unlink(self.tmp)
-        if os.path.exists(self.tmpdir):
-            shutil.rmtree(self.tmpdir)
-
-    def test_list_templates(self):
-        """ When listing templates, create should not be called """
-        create_meth = patch.object(create, 'create').start()
-        create.main(['-l'])
-        self.assertFalse(create_meth.called)
-
-    def test_default_create(self):
-        """ Ensure proper default arguments from command line """
-        create_meth = patch.object(create, 'create').start()
-        create.main(['repo', '-s', '-f'])
-        create_meth.assert_called_with('repo', True, True, None)
-
-    def test_append_new(self):
-        """ Appending lines to a new file adds those lines to the file """
-        lines = ['first line', 'another line']
-        create.append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_blank(self):
-        """ Appending lines to a file adds those lines to the file """
-        with open(self.tmp, 'w') as outfile:
-            outfile.write('')
-        lines = ['first line', 'another line']
-        create.append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_no_duplicates(self):
-        """ Appending lines to a file does not result in duplicate lines """
-        with open(self.tmp, 'w') as outfile:
-            outfile.write('first line\n')
-        lines = ['first line', 'another line']
-        create.append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), '\n'.join(lines) + '\n')
-
-    def test_append_no_disturb(self):
-        """ Appending lines to a file ignores existing text """
-        text = 'pre-existing text\nThat will need to be ignored\n'
-        with open(self.tmp, 'w') as outfile:
-            outfile.write(text)
-        lines = ['first line', 'another line']
-        create.append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), text + '\n'.join(lines) + '\n')
-
-    def test_append_prepend_newline(self):
-        """ Appending lines to a file adds a leading newline if needed """
-        text = 'pre-existing text\nThat will need to be ignored'
-        with open(self.tmp, 'w') as outfile:
-            outfile.write(text)
-        lines = ['first line', 'another line']
-        create.append(lines, self.tmp)
-        with open(self.tmp, 'r') as infile:
-            self.assertEquals(infile.read(), text + '\n' + '\n'.join(lines) +
-                              '\n')
-
-    def test_base_create_works(self):
-        """ Base create method should throw no exceptions """
-        create.main([self.tmpdir, '-f'])
-        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
-                                                    create.CONF_FILE)))
-
-    def test_python_create_works(self):
-        """ Base create method should throw no exceptions """
-        create.main([self.tmpdir, '-t', 'python', '-f'])
-        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
-                                                    create.CONF_FILE)))
-
-    def test_exception_if_dir_exists(self):
-        """ Exception if running create on existing dir without -f """
-        self.assertRaises(Exception, create.main, [self.tmpdir])
-
-    def test_base_create_no_force(self):
-        """ When create dir doesn't exist, -f shouldn't be required """
-        os.rmdir(self.tmpdir)
-        create.main([self.tmpdir])
-        self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
-                                                    create.CONF_FILE)))
