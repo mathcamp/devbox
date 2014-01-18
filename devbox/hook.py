@@ -180,10 +180,10 @@ def main():
 
     """
     if '-h' in sys.argv:
-        print main.__doc__
+        print(main.__doc__)
         sys.exit()
     if len(sys.argv) < 2:
-        print main.__doc__
+        print(main.__doc__)
         sys.exit(1)
     command = sys.argv[1]
     if command == 'all':
@@ -196,15 +196,15 @@ def main():
         else:
             index_dir = tempfile.mkdtemp()
         copy_index(index_dir)
-        print index_dir
+        print(index_dir)
     elif command == 'run-checks':
         if len(sys.argv) < 3:
-            print main.__doc__
+            print(main.__doc__)
             sys.exit(1)
         retcode = run_checks_in_dir(sys.argv[2])
         sys.exit(retcode)
     else:
-        print main.__doc__
+        print(main.__doc__)
         sys.exit(1)
 
 if __name__ == '__main__':
