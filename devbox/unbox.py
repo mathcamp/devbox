@@ -213,9 +213,10 @@ def unbox(repo, dest=None, no_deps=False, *parents):
         LOG.info("Installing into %s", install_dir)
         dest_conf = load_conf(install_dir)
         venv = dest_conf.get('env')
-        with pushd(install_dir):
-            if venv is not None:
-                venv['path'] = os.path.abspath(venv['path'])
+        if venv is not None:
+            venv['path'] = os.path.join(os.path.abspath(install_dir),
+                                        venv['path'])
+        with pushd(dest):
             run_commands(conf.get('post_setup', []), venv)
 
 LEVEL_MAP = {
