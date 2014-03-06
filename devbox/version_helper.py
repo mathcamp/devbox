@@ -355,16 +355,22 @@ def git_describe(describe_args):
         If there is an error running ``git describe``
 
     """
-    encoding = locale.getdefaultlocale()[1] or 'utf-8'
-    proc = subprocess.Popen(GIT_DESCRIBE + describe_args,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
-    output = proc.communicate()[0]
-    description = output.decode(encoding).strip()
-    if proc.returncode != 0:
+    description = None
+    try:
+        proc = subprocess.Popen(GIT_DESCRIBE + describe_args,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        output = proc.communicate()[0]
+        encoding = locale.getdefaultlocale()[1] or 'utf-8'
+        description = output.decode(encoding).strip()
+        error = proc.returncode != 0
+    except os.error:
+        error = True
+    if error:
         print("Error parsing git revision! Make sure that you have tagged a "
               "commit, and that the tag matches the 'tag_match' argument")
-        print("Git output: " + description)
+        if description is not None:
+            print("Git output: " + description)
         return {
             'tag': 'unknown',
             'description': 'unknown',
